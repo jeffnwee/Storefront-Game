@@ -1,175 +1,200 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Monster Curry Storefront Battle</title>
-    <link rel="icon" href="data:,">
-    <link rel="preload" href="./assets/backgrounds/curry-goblin.webp?v=20260724-idle-perf2" as="image" type="image/webp" fetchpriority="high">
-    <link rel="stylesheet" href="./styles.css?v=20260812-alpha-perf2">
-    <script async src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <script type="module" src="./src/screen.js?v=20260814-fast-reset1"></script>
-  </head>
-  <body class="screen-page">
-    <main class="screen-app">
-      <section id="attractView" class="display-view attract-view">
-        <div class="video-fallback" aria-hidden="true"></div>
-        <div id="idleBattleBackground" class="idle-battle-background" aria-hidden="true"></div>
-        <div class="screen-scrim" aria-hidden="true"></div>
 
-        <div class="portrait-shell attract-shell">
-          <div class="brand-bar">
-            <strong>MONSTER CURRY</strong>
-            <span>Storefront Battle</span>
-          </div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monster Curry Storefront Battle</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" href="./assets/backgrounds/curry-goblin.webp?v=20260724-idle-perf2" as="image" type="image/webp"
+    fetchpriority="high">
+  <link rel="stylesheet" href="./styles.css?v=20260812-alpha-perf2">
+  <script async src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script type="module" src="./src/screen.js?v=20260814-fast-reset1"></script>
+</head>
 
-          <div class="attract-experience">
-            <header class="idle-call-to-action">
-              <span>Ready for a cool experience?</span>
-              <strong>Play. Battle. Unlock rewards.</strong>
-              <p>Join the live Monster Curry battle from your phone.</p>
-            </header>
+<body class="screen-page">
+  <main class="screen-app">
+    <section id="attractView" class="display-view attract-view">
+      <div class="video-fallback" aria-hidden="true"></div>
+      <div id="idleBattleBackground" class="idle-battle-background" aria-hidden="true"></div>
+      <div class="screen-scrim" aria-hidden="true"></div>
 
-            <section class="idle-battle-stage" aria-label="Simulated Monster Curry battle preview">
-              <div class="idle-battle-arena">
-                <article id="idlePlayerFighter" class="idle-fighter idle-player-fighter">
-                  <img id="idlePlayerArt" src="./assets/characters/idle/katsu-chan.webp" alt="Katsu-Chan" decoding="async" fetchpriority="high">
-                  <video id="idleMoveAnimation" class="attack-animation move-animation idle-fighter-animation" muted playsinline preload="none" aria-hidden="true"></video>
-                </article>
-
-                <div class="idle-impact-wrap" aria-hidden="true">
-                  <span class="idle-versus">VS</span>
-                </div>
-
-                <article id="idleMonsterFighter" class="idle-fighter idle-monster-fighter">
-                  <img id="idleMonsterArt" src="./assets/enemies/curry-goblin.webp" alt="Curry Goblin" decoding="async">
-                </article>
-              </div>
-
-              <strong id="idleBattleMove" class="idle-battle-move">Katsu-Chan enters the arena!</strong>
-            </section>
-
-            <aside class="join-code-panel attract-join" aria-label="Join game">
-              <div class="website-qr-wrap">
-                <canvas id="websiteQr" width="144" height="144" aria-label="QR code for the Monster Curry website"></canvas>
-                <img id="websiteQrFallback" class="website-qr-fallback" alt="QR code for the Monster Curry website" hidden>
-              </div>
-              <div class="join-instructions">
-                <span class="join-kicker">Join on the Monster Curry website</span>
-                <span id="gameCodeLabel" class="game-code">----</span>
-                <strong>Swipe right and enter the code</strong>
-              </div>
-            </aside>
-          </div>
-        </div>
-      </section>
-
-      <section id="lobbyView" class="display-view lobby-view" hidden>
-        <div class="portrait-shell">
-          <div class="brand-bar">
-            <strong>MONSTER CURRY</strong>
-            <span id="lobbyCode">----</span>
-          </div>
-
-          <div class="lobby-copy">
-            <p class="eyebrow">Players joining</p>
-            <h1 id="lobbyTitle">Waiting for players</h1>
-            <p id="lobbyMessage">A player can press Start on their phone to play solo. A second player starts co-op automatically.</p>
-          </div>
-
-          <div id="lobbySlots" class="lobby-slots"></div>
-
-          <aside class="join-code-panel compact" aria-label="Join game">
-            <span>Website Battle code</span>
-            <span class="game-code" id="lobbyJoinCode">----</span>
-          </aside>
-        </div>
-      </section>
-
-      <section id="battleView" class="display-view battle-view" hidden>
-        <video id="battleBackgroundVideo" class="battle-background-video is-active" muted playsinline loop preload="metadata" aria-hidden="true">
-          <source src="./assets/battle-background.mp4?v=20260722-perf1" type="video/mp4">
-        </video>
-        <div class="battle-background-scrim" aria-hidden="true"></div>
-        <div class="live-battle-fx" aria-live="polite" aria-atomic="true">
-          <video id="moveAnimation" class="attack-animation move-animation" muted playsinline preload="none" aria-hidden="true"></video>
-          <video id="moveAnimationSecondary" class="attack-animation move-animation" muted playsinline preload="none" aria-hidden="true"></video>
-          <strong id="liveBattleMove" class="live-battle-move"></strong>
-          <span id="liveBattleImpact" class="live-battle-impact" aria-hidden="true">BAM!</span>
+      <div class="portrait-shell attract-shell">
+        <div class="brand-bar">
+          <strong>MONSTER CURRY</strong>
+          <span>Storefront Battle</span>
         </div>
 
-        <div class="portrait-shell battle-shell">
-          <header class="battle-topbar">
-            <div>
-              <span class="eyebrow" id="modeLabel">Solo Mode</span>
-              <strong id="levelLabel">Level 1</strong>
-            </div>
-            <div class="turn-badge">
-              <span>Turn</span>
-              <strong id="turnNumber">1</strong>
-            </div>
+        <div class="attract-experience">
+          <header class="idle-call-to-action">
+            <span>Ready for a cool experience?</span>
+            <strong>Play. Battle. Unlock rewards.</strong>
+            <p>Join the live Monster Curry battle from your phone.</p>
           </header>
 
-          <div class="battle-layout">
-            <section class="party-stack" aria-label="Players">
-              <div id="playerCards" class="player-cards"></div>
-            </section>
-
-            <section class="monster-zone" aria-label="Monster">
-              <article id="monsterCard" class="combat-card monster-card">
-                <div class="combat-label">
-                  <span>Monster</span>
-                  <strong id="monsterName">Monster</strong>
-                </div>
-                <div class="hp-row">
-                  <span>HP</span>
-                  <div class="hp-track">
-                    <div id="monsterHpBar" class="hp-fill"></div>
-                    <strong id="monsterHpText" class="hp-value">0/0</strong>
-                  </div>
-                </div>
-                <img id="monsterArt" class="combat-art monster-art" alt="Monster" decoding="async">
-                <div id="monsterEffects" class="effect-line"></div>
+          <section class="idle-battle-stage" aria-label="Simulated Monster Curry battle preview">
+            <div class="idle-battle-arena">
+              <article id="idlePlayerFighter" class="idle-fighter idle-player-fighter">
+                <img id="idlePlayerArt" src="./assets/characters/idle/katsu-chan.webp" alt="Katsu-Chan" decoding="async"
+                  fetchpriority="high">
+                <video id="idleMoveAnimation" class="attack-animation move-animation idle-fighter-animation" muted
+                  playsinline preload="none" aria-hidden="true"></video>
               </article>
-            </section>
-          </div>
 
-          <section class="screen-message">
-            <p id="battleStatus">Now pick your move on your phone!</p>
-            <div id="lastMoves" class="last-moves"></div>
-            <div id="battleLog" class="battle-log"></div>
+              <div class="idle-impact-wrap" aria-hidden="true">
+                <span class="idle-versus">VS</span>
+              </div>
+
+              <article id="idleMonsterFighter" class="idle-fighter idle-monster-fighter">
+                <img id="idleMonsterArt" src="./assets/enemies/curry-goblin.webp" alt="Curry Goblin" decoding="async">
+              </article>
+            </div>
+
+            <strong id="idleBattleMove" class="idle-battle-move">Katsu-Chan enters the arena!</strong>
           </section>
 
-          <aside class="mini-code" aria-label="Join game code">
-            <strong>Join code</strong>
-            <span id="miniGameCode">----</span>
+          <aside class="join-code-panel attract-join" aria-label="Join game">
+            <div class="website-qr-wrap">
+              <canvas id="websiteQr" width="144" height="144"
+                aria-label="QR code for the Monster Curry website"></canvas>
+              <img id="websiteQrFallback" class="website-qr-fallback" alt="QR code for the Monster Curry website"
+                hidden>
+            </div>
+            <div class="join-instructions">
+              <span class="join-kicker">Join on the Monster Curry website</span>
+              <span id="gameCodeLabel" class="game-code">----</span>
+              <strong>Swipe right and enter the code</strong>
+            </div>
           </aside>
         </div>
-      </section>
-
-      <section id="gameOverView" class="display-view game-over-view" hidden>
-        <div class="portrait-shell game-over-shell">
-          <div class="brand-bar">
-            <strong>MONSTER CURRY</strong>
-            <span>Battle complete</span>
-          </div>
-          <div class="game-over-copy">
-            <p class="eyebrow" id="gameOverEyebrow">Battle complete</p>
-            <h1 id="winnerText">Winner</h1>
-            <p id="gameOverMessage">A fresh code will appear for the next battle.</p>
-          </div>
-          <aside class="join-code-panel compact" aria-label="Next game code">
-            <strong>Next game</strong>
-            <span id="gameOverCode" class="game-code">New code soon</span>
-          </aside>
-        </div>
-      </section>
-
-      <div class="staff-controls" aria-label="Staff controls">
-        <button id="resetButton" type="button">Reset</button>
-        <button id="copyJoinButton" type="button">Copy game code</button>
-        <button id="fullScreenButton" type="button">Fullscreen</button>
       </div>
-    </main>
-  </body>
+    </section>
+
+    <section id="lobbyView" class="display-view lobby-view" hidden>
+      <div class="portrait-shell">
+        <div class="brand-bar">
+          <strong>MONSTER CURRY</strong>
+          <span id="lobbyCode">----</span>
+        </div>
+
+        <div class="lobby-copy">
+          <p class="eyebrow">Players joining</p>
+          <h1 id="lobbyTitle">Waiting for players</h1>
+          <p id="lobbyMessage">A player can press Start on their phone to play solo. A second player starts co-op
+            automatically.</p>
+        </div>
+
+        <div id="lobbySlots" class="lobby-slots"></div>
+
+        <aside class="join-code-panel compact" aria-label="Join game">
+          <span>Website Battle code</span>
+          <span class="game-code" id="lobbyJoinCode">----</span>
+        </aside>
+      </div>
+    </section>
+
+    <section id="battleView" class="display-view battle-view" hidden>
+      <video id="battleBackgroundVideo" class="battle-background-video is-active" muted playsinline loop
+        preload="metadata" aria-hidden="true">
+        <source src="./assets/battle-background.mp4?v=20260722-perf1" type="video/mp4">
+      </video>
+      <div class="battle-background-scrim" aria-hidden="true"></div>
+      <div class="live-battle-fx" aria-live="polite" aria-atomic="true">
+        <video id="moveAnimation" class="attack-animation move-animation" muted playsinline preload="none"
+          aria-hidden="true"></video>
+        <video id="moveAnimationSecondary" class="attack-animation move-animation" muted playsinline preload="none"
+          aria-hidden="true"></video>
+        <strong id="liveBattleMove" class="live-battle-move"></strong>
+        <span id="liveBattleImpact" class="live-battle-impact" aria-hidden="true">BAM!</span>
+      </div>
+
+      <div class="portrait-shell battle-shell">
+        <header class="battle-topbar">
+          <div>
+            <span class="eyebrow" id="modeLabel">Solo Mode</span>
+            <strong id="levelLabel">Level 1</strong>
+          </div>
+          <div class="turn-badge">
+            <span>Turn</span>
+            <strong id="turnNumber">1</strong>
+          </div>
+        </header>
+
+        <div class="battle-layout">
+          <section class="party-stack" aria-label="Players">
+            <div id="playerCards" class="player-cards"></div>
+          </section>
+
+          <section class="monster-zone" aria-label="Monster">
+            <article id="monsterCard" class="combat-card monster-card">
+              <div class="combat-label">
+                <span>Monster</span>
+                <strong id="monsterName">Monster</strong>
+              </div>
+              <div class="hp-row">
+                <span>HP</span>
+                <div class="hp-track">
+                  <div id="monsterHpBar" class="hp-fill"></div>
+                  <strong id="monsterHpText" class="hp-value">0/0</strong>
+                </div>
+              </div>
+              <img id="monsterArt" class="combat-art monster-art" alt="Monster" decoding="async">
+              <div id="monsterEffects" class="effect-line"></div>
+            </article>
+          </section>
+        </div>
+
+        <section class="screen-message">
+          <p id="battleStatus">Now pick your move on your phone!</p>
+          <div id="lastMoves" class="last-moves"></div>
+          <div id="battleLog" class="battle-log"></div>
+        </section>
+
+        <aside class="mini-code" aria-label="Join game code">
+          <strong>Join code</strong>
+          <span id="miniGameCode">----</span>
+        </aside>
+      </div>
+    </section>
+
+    <div id="tutorialOverlay" class="tutorial-overlay" hidden>
+      <div class="tutorial-card">
+        <span class="eyebrow">Quick Tip</span>
+        <h2>How to Battle</h2>
+        <ol class="tutorial-steps">
+          <li><span class="tutorial-step-number">1</span><span>Pick a move on your phone</span></li>
+          <li><span class="tutorial-step-number">2</span><span>Everyone's move locks in together</span></li>
+          <li><span class="tutorial-step-number">3</span><span>Watch it play out on the big screen!</span></li>
+        </ol>
+        <p id="tutorialWaitingText" class="tutorial-waiting"></p>
+      </div>
+    </div>
+
+    <section id="gameOverView" class="display-view game-over-view" hidden>
+      <div class="portrait-shell game-over-shell">
+        <div class="brand-bar">
+          <strong>MONSTER CURRY</strong>
+          <span>Battle complete</span>
+        </div>
+        <div class="game-over-copy">
+          <p class="eyebrow" id="gameOverEyebrow">Battle complete</p>
+          <h1 id="winnerText">Winner</h1>
+          <p id="gameOverMessage">A fresh code will appear for the next battle.</p>
+        </div>
+        <aside class="join-code-panel compact" aria-label="Next game code">
+          <strong>Next game</strong>
+          <span id="gameOverCode" class="game-code">New code soon</span>
+        </aside>
+      </div>
+    </section>
+
+    <div class="staff-controls" aria-label="Staff controls">
+      <button id="resetButton" type="button">Reset</button>
+      <button id="copyJoinButton" type="button">Copy game code</button>
+      <button id="fullScreenButton" type="button">Fullscreen</button>
+    </div>
+  </main>
+</body>
+
 </html>

@@ -1350,3 +1350,84 @@ button:disabled {
     height: 96px;
   }
 }
+
+.tutorial-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: linear-gradient(180deg, rgba(3, 9, 22, 0.72), rgba(3, 7, 18, 0.88));
+}
+
+.tutorial-card {
+  width: min(100%, 440px);
+  padding: 26px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 10px;
+  background: rgba(7, 10, 17, 0.9);
+  text-align: center;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.92);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.tutorial-card .eyebrow {
+  margin-bottom: 6px;
+}
+
+.tutorial-card h2 {
+  margin: 0 0 20px;
+  color: #fff;
+  font-size: 33.6px;
+  line-height: 0.98;
+}
+
+.tutorial-steps {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.tutorial-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tutorial-steps li > span:last-child {
+  color: rgba(255, 247, 232, 0.92);
+  font-size: 16.8px;
+  font-weight: 800;
+  line-height: 1.28;
+}
+
+.tutorial-step-number {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 1000;
+  box-shadow: 0 6px 16px rgba(237, 29, 36, 0.42);
+}
+
+.tutorial-waiting {
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

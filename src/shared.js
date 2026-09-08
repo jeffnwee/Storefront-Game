@@ -121,6 +121,8 @@ export function createAttractSession(gameId, joinUrl = null, timestampValue) {
     turn: 0,
     pendingMoves: {},
     activeMoves: {},
+    showTutorial: false,
+    tutorialAcks: {},
     roundResult: null,
     winner: null,
     log: ["Enter the big-screen game code on the Monster Curry website to join."],
@@ -153,4 +155,10 @@ export function getAlivePlayerIds(state) {
   const activeIds = Array.isArray(state?.activePlayerIds) ? state.activePlayerIds : [];
   const players = state?.players || {};
   return activeIds.filter((id) => Number(players[id]?.hp || 0) > 0);
+}
+
+export function allPlayersAcknowledgedTutorial(state) {
+  const playerIds = getOrderedPlayers(state).map((player) => player.id);
+  const acks = state?.tutorialAcks || {};
+  return playerIds.length > 0 && playerIds.every((id) => Boolean(acks[id]));
 }

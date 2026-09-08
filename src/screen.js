@@ -1,6 +1,7 @@
 import { allAlivePlayersHaveMoves, prepareNextLevel, resolveRound } from "./battle-engine.js?v=20260808-hard-enemies";
 import { CHARACTERS, LEVELS, getLevelCount, getMove } from "./game-data.js?v=20260808-hard-enemies";
 import {
+  allPlayersAcknowledgedTutorial,
   createAttractSession,
   formatGameCode,
   getAlivePlayerIds,
@@ -43,6 +44,8 @@ const elements = {
   lobbyView: $("lobbyView"),
   battleView: $("battleView"),
   gameOverView: $("gameOverView"),
+  tutorialOverlay: $("tutorialOverlay"),
+  tutorialWaitingText: $("tutorialWaitingText"),
   websiteQr: $("websiteQr"),
   websiteQrFallback: $("websiteQrFallback"),
   idleBattleBackground: $("idleBattleBackground"),
@@ -364,7 +367,7 @@ function preloadPlayerArt(player) {
       image.fetchPriority = "high";
       image.addEventListener("load", () => {
         const decode = typeof image.decode === "function" ? image.decode() : Promise.resolve();
-        decode.catch(() => {}).finally(() => resolve(sourceUrl));
+        decode.catch(() => { }).finally(() => resolve(sourceUrl));
       }, { once: true });
       image.addEventListener("error", () => {
         playerArtPreloads.delete(sourceUrl);
@@ -1372,6 +1375,23 @@ function renderHp(track, label, fighter) {
   label.textContent = `${fighter.hp}/${fighter.maxHp}`;
 }
 
+function renderTutorialOverlay(state) {
+  const showing = Boolean(state?.showTutorial);
+  elements.tutorialOverlay.hidden = !showing;
+
+  if (!showing) {
+    return;
+  }
+
+  const players = getOrderedPlayers(state);
+  const acks = state.tutorialAcks || {};
+  const waitingOn = players.filter((player) => !acks[player.id]).map((player) => player.name);
+
+  elements.tutorialWaitingText.textContent = waitingOn.length
+    ? `Waiting on: ${waitingOn.join(", ")}`
+    : "Starting battle...";
+}
+
 function renderAttract() {
   setView("attract");
 }
@@ -1487,6 +1507,7 @@ function renderLog(log) {
 function renderBattle(state) {
   const previousSnapshot = lastBattleSnapshot;
   setView("battle");
+  renderTutorialOverlay(state);
   const players = getOrderedPlayers(state);
   const monster = state.monster;
   const aliveIds = getAlivePlayerIds(state);
@@ -1620,6 +1641,41 @@ async function rotateToNewSession() {
   }
 }
 
+let tutorialDismissToken = null;
+
+async function resolveTutorialAcknowledgement(state) {
+  if (!state?.showTutorial) {
+    tutorialDismissToken = null;
+    return;
+  }
+
+  if (!allPlayersAcknowledgedTutorial(state)) {
+    return;
+  }
+
+  const token = `${state.levelIndex}-${state.turn}-tutorial`;
+  if (tutorialDismissToken === token) {
+    return;
+  }
+  tutorialDismissToken = token;
+
+  const activeGameId = gameId;
+  const activeSessionRef = sessionRef;
+  const snapshot = await get(activeSessionRef);
+  const liveState = snapshot.val();
+
+  if (!liveState || !liveState.showTutorial || !allPlayersAcknowledgedTutorial(liveState)) {
+    tutorialDismissToken = null;
+    return;
+  }
+
+  await update(activeSessionRef, {
+    showTutorial: false,
+    tutorialAcks: {},
+    lastActionAt: serverTimestamp()
+  });
+}
+
 async function resolvePendingMoves(state) {
   if (state.status !== "battle" || !allAlivePlayersHaveMoves(state)) {
     return;
@@ -1664,7 +1720,7 @@ async function resolvePendingMoves(state) {
 
   const animationDelay = PLAYER_LOOK_UP_DELAY_MS + 1400
     + Math.max(0, getAlivePlayerIds(readyState).length - 1)
-      * (LIVE_MOVE_ANIMATION_SPACING_MS + MOVE_ANIMATION_FALLBACK_TIMEOUT_MS);
+    * (LIVE_MOVE_ANIMATION_SPACING_MS + MOVE_ANIMATION_FALLBACK_TIMEOUT_MS);
 
   window.setTimeout(async () => {
     if (gameId !== activeGameId) {
@@ -1854,6 +1910,10 @@ async function activateSession(nextGameId, createNew) {
     render(state);
     scheduleLevelAdvance(state);
     scheduleGameOverReset(state);
+    resolveTutorialAcknowledgement(state).catch((error) => {
+      console.error("Could not resolve tutorial acknowledgement", error);
+      tutorialDismissToken = null;
+    });
     resolvePendingMoves(state).catch((error) => {
       console.error("Could not resolve moves", error);
       resolvingToken = null;
