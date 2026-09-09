@@ -58,6 +58,7 @@ const elements = {
   monsterCard: $("monsterCard"),
   liveBattleMove: $("liveBattleMove"),
   liveBattleImpact: $("liveBattleImpact"),
+  liveMonsterPortrait: $("liveMonsterPortrait"),
   moveAnimation: $("moveAnimation"),
   moveAnimations: [$("moveAnimation"), $("moveAnimationSecondary")],
   battleBackgroundVideo: $("battleBackgroundVideo"),
@@ -677,6 +678,7 @@ function clearLiveBattleAnimations({ cancelReadiness = true, preservePreparedVid
   lastBattleSnapshot = null;
   elements.liveBattleMove.classList.remove("is-showing");
   elements.liveBattleImpact.classList.remove("is-bursting");
+  elements.liveMonsterPortrait.classList.remove("is-showing");
   if (cancelReadiness) {
     cancelAllMoveAnimationReadiness();
   }
@@ -707,6 +709,15 @@ function pruneMoveAnimationReadiness(state) {
 function getPlayerBattleCard(playerId) {
   return Array.from(elements.playerCards.children)
     .find((card) => card.dataset.playerId === playerId) || null;
+}
+
+function showLiveMonsterPortrait(monster) {
+  if (!monster?.asset) {
+    return;
+  }
+  elements.liveMonsterPortrait.src = monster.asset;
+  elements.liveMonsterPortrait.alt = monster.name || "Monster";
+  animateIdleElement(elements.liveMonsterPortrait, "is-showing", 1080);
 }
 
 function showLiveBattleAction(moveName, impact = null) {
@@ -1258,6 +1269,7 @@ function animateRoundOutcome(state, previousSnapshot) {
       }
 
       showLiveBattleAction(monsterMoveName, randomItem(IDLE_IMPACT_WORDS));
+      showLiveMonsterPortrait(state.monster);
       animateIdleElement(elements.monsterCard, "is-live-attacking", 680);
       damagedPlayerIds.forEach((playerId) => animateIdleElement(getPlayerBattleCard(playerId), "is-live-hit", 580));
     }, 100);
@@ -1337,6 +1349,7 @@ function setView(viewName) {
   elements.lobbyView.hidden = viewName !== "lobby";
   elements.battleView.hidden = !battleIsActive;
   elements.gameOverView.hidden = viewName !== "game-over";
+  elements.tutorialOverlay.hidden = !battleIsActive;
 
   if (battleIsActive && !document.hidden) {
     startBattleBackground();
@@ -1493,14 +1506,122 @@ function renderPlayerCards(players, pendingMoves) {
   });
 }
 
-function renderLog(log) {
+const LOG_PATTERNS = [
+  {
+    regex: /^(.+) used .+ on (.+) for (\d+) damage\.(?: (.+) blocked (\d+)\.)?$/,
+    icon: (m, ctx) => (m[1] === ctx.monsterName ? "💢" : "⚔️"),
+    segments: (m, ctx) => {
+      const attacker = m[1];
+      const target = m[2];
+      const segs = [
+        { text: attacker, color: ctx.colors[attacker] },
+        { text: " → " },
+        { text: target, color: ctx.colors[target] },
+        { text: ` −${m[3]}`, color: ctx.colors[attacker] }
+      ];
+      if (m[5]) segs.push({ text: ` (blk ${m[5]})` });
+      return segs;
+    }
+  },
+  {
+    regex: /^(.+) used .+ for (\d+) damage\.(?: (.+) blocked (\d+)\.)?$/,
+    icon: "⚔️",
+    segments: (m, ctx) => {
+      const attacker = m[1];
+      const target = ctx.monsterName || "Monster";
+      const segs = [
+        { text: attacker, color: ctx.colors[attacker] },
+        { text: " → " },
+        { text: target, color: ctx.colors[target] },
+        { text: ` −${m[2]}`, color: ctx.colors[attacker] }
+      ];
+      if (m[4]) segs.push({ text: ` (blk ${m[4]})` });
+      return segs;
+    }
+  },
+  { regex: /^(.+) found the finishing angle\.$/, icon: "💥", format: (m) => `${m[1]} finishing blow!` },
+  { regex: /^(.+) regenerated (\d+) HP\.$/, icon: "🌿", format: (m) => `${m[1]} +${m[2]}` },
+  { regex: /^(.+) took (\d+) burn damage\.$/, icon: "🔥", format: (m) => `${m[1]} −${m[2]}` },
+  { regex: /^(.+) recovered (\d+) HP\.$/, icon: "❤️", format: (m) => `${m[1]} +${m[2]}` },
+  { regex: /^(.+) is burning\.$/, icon: "🔥", format: (m) => `${m[1]} burning` },
+  { regex: /^(.+) lowered (.+)'s Attack\.$/, icon: "⬇️", format: (m) => `${m[2]} ATK↓` },
+  { regex: /^(.+) gained (\d+) shield\.$/, icon: "🛡️", format: (m) => `${m[1]} +${m[2]} shield` },
+  { regex: /^(.+) healed (\d+) HP\.$/, icon: "❤️", format: (m) => `${m[1]} +${m[2]}` },
+  { regex: /^(.+)'s Attack rose\.$/, icon: "⬆️", format: (m) => `${m[1]} ATK↑` },
+  { regex: /^(.+) is guarded\.$/, icon: "🛡️", format: (m) => `${m[1]} guarded` },
+  { regex: /^(.+) will regenerate HP\.$/, icon: "🌿", format: (m) => `${m[1]} regen ready` },
+  { regex: /^(.+) prepared a counter\.$/, icon: "↩️", format: (m) => `${m[1]} counter set` },
+  { regex: /^(.+) challenged the monster\.$/, icon: "⚡", format: (m) => `${m[1]} taunt!` },
+  { regex: /^(.+) is covering (.+)\.$/, icon: "🛡️", format: (m) => `${m[1]} covers ${m[2]}` },
+  { regex: /^(.+)'s debuffs were removed\.$/, icon: "✨", format: (m) => `${m[1]} cleansed` },
+  { regex: /^(.+)'s Defense dropped after the performance\.$/, icon: "⬇️", format: (m) => `${m[1]} DEF↓` },
+  { regex: /^The final monster is defeated\.$/, icon: "🏆", format: () => "Victory!" },
+  { regex: /^(.+) is defeated\. Next level incoming\.$/, icon: "✅", format: (m) => `${m[1]} defeated` },
+  { regex: /^All players are out of HP\.$/, icon: "💀", format: () => "Defeat..." },
+  { regex: /^(.+) used .+\. A (\d+)-point shield formed\.$/, icon: "🛡️", format: (m) => `${m[1]} shields up +${m[2]}` },
+  { regex: /^(.+) used .+\. The party's Attack fell\.$/, icon: "⬇️", format: (m) => `${m[1]}: party ATK↓` },
+  { regex: /^(.+) covered (.+)\.$/, icon: "🛡️", format: (m) => `${m[1]} covers ${m[2]}` },
+  { regex: /^(.+)'s Attack fell\.$/, icon: "⬇️", format: (m) => `${m[1]} ATK↓` },
+  { regex: /^(.+) enters the battle\.$/, icon: "👾", format: (m) => `${m[1]} appears!` }
+];
+
+function formatLogEntry(text, context) {
+  for (const pattern of LOG_PATTERNS) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      const segments = pattern.segments
+        ? pattern.segments(match, context)
+        : [{ text: pattern.format(match, context) }];
+      const icon = typeof pattern.icon === "function" ? pattern.icon(match, context) : pattern.icon;
+      return { icon, segments };
+    }
+  }
+  return { icon: "📝", segments: [{ text }] };
+}
+
+const knownFighterColors = {};
+
+function registerFighterColors(players, monster) {
+  players.forEach((player) => {
+    if (player?.name && player?.color) {
+      knownFighterColors[player.name] = player.color;
+    }
+  });
+  if (monster?.name && monster?.color) {
+    knownFighterColors[monster.name] = monster.color;
+  }
+}
+
+function renderLog(log, players, monster) {
+  registerFighterColors(players, monster);
   const entries = Array.isArray(log) ? log.slice(-5) : [];
+  const context = { colors: knownFighterColors, monsterName: monster?.name };
   elements.battleLog.innerHTML = "";
 
   entries.forEach((entry) => {
-    const line = document.createElement("p");
-    line.textContent = entry;
-    elements.battleLog.append(line);
+    const { icon, segments } = formatLogEntry(entry, context);
+    const row = document.createElement("p");
+    row.className = "log-row";
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "log-icon";
+    iconSpan.textContent = icon;
+    row.append(iconSpan);
+
+    const textWrap = document.createElement("span");
+    textWrap.className = "log-text";
+    segments.forEach((segment) => {
+      const span = document.createElement("span");
+      span.textContent = segment.text;
+      if (segment.color) {
+        span.style.color = segment.color;
+        span.style.fontWeight = "1000";
+      }
+      textWrap.append(span);
+    });
+    row.append(textWrap);
+
+    elements.battleLog.append(row);
   });
 }
 
@@ -1552,7 +1673,7 @@ function renderBattle(state) {
     });
   }
   elements.lastMoves.textContent = chosenMoves.length ? `Locked moves: ${chosenMoves.map((move) => move.name).join(" + ")}` : "";
-  renderLog(state.log);
+  renderLog(state.log, players, monster);
   animateResolvingMoves(state);
   animateRoundOutcome(state, previousSnapshot);
   lastBattleSnapshot = captureBattleSnapshot(state);
@@ -1789,6 +1910,29 @@ function scheduleLevelAdvance(state) {
   }, 4200);
 }
 
+const ABANDONED_SESSION_GRACE_MS = 45000; // 45s buffer for brief reconnects
+let abandonedSessionTimer = null;
+
+function scheduleAbandonedSessionReset(state) {
+  const isActiveSession = state && !["attract", "game-over"].includes(state.status);
+  const hasConnectedPlayers = Boolean(state?.presence && Object.keys(state.presence).length > 0);
+
+  if (!isActiveSession || hasConnectedPlayers) {
+    window.clearTimeout(abandonedSessionTimer);
+    abandonedSessionTimer = null;
+    return;
+  }
+
+  if (abandonedSessionTimer) {
+    return;
+  }
+
+  abandonedSessionTimer = window.setTimeout(() => {
+    abandonedSessionTimer = null;
+    rotateToNewSession().catch((error) => console.error("Could not auto-reset abandoned session", error));
+  }, ABANDONED_SESSION_GRACE_MS);
+}
+
 function scheduleGameOverReset(state) {
   if (state?.status !== "game-over") {
     window.clearTimeout(gameOverTimer);
@@ -1910,6 +2054,7 @@ async function activateSession(nextGameId, createNew) {
     render(state);
     scheduleLevelAdvance(state);
     scheduleGameOverReset(state);
+    scheduleAbandonedSessionReset(state); 
     resolveTutorialAcknowledgement(state).catch((error) => {
       console.error("Could not resolve tutorial acknowledgement", error);
       tutorialDismissToken = null;

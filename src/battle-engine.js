@@ -145,7 +145,7 @@ function applyPlayerDamage(actor, monster, move, power, messages) {
   const amount = powerDamage(actor, monster, movePower);
   const result = applyDamage(monster, amount);
   const blockText = result.blocked ? ` ${monster.name} blocked ${result.blocked}.` : "";
-  messages.push(`${actor.name} used ${move.name} for ${result.damage} damage.${blockText}`);
+  messages.push(`${actor.name} used ${move.name} on ${monster.name} for ${result.damage} damage.${blockText}`);
 
   if (move.lifestealPct && result.damage > 0) {
     const before = actor.hp;

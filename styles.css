@@ -556,6 +556,25 @@ button:disabled {
   will-change: opacity, transform;
 }
 
+.live-monster-portrait {
+  position: absolute;
+  top: 49%;
+  left: 50%;
+  z-index: 3;
+  width: 240px;
+  height: 240px;
+  opacity: 0;
+  object-fit: contain;
+  transform: translate(-50%, -50%) scale(0.7);
+  filter: drop-shadow(0 24px 36px rgba(0, 0, 0, 0.5));
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.live-monster-portrait.is-showing {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
 .move-animation {
   visibility: hidden;
   width: 108%;
@@ -594,6 +613,7 @@ button:disabled {
   position: absolute;
   top: 25%;
   left: 50%;
+  z-index: 5;
   width: min(88%, 480px);
   padding: 15px 22px;
   opacity: 0;
@@ -617,6 +637,7 @@ button:disabled {
   position: absolute;
   top: 44%;
   left: 50%;
+  z-index: 5;
   opacity: 0;
   color: #fff;
   font-size: 58px;
@@ -881,13 +902,28 @@ button:disabled {
   gap: 4px;
 }
 
-.battle-log p {
+.battle-log p.log-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin: 0;
   color: #fff8ea;
   font-size: 16px;
   font-weight: 750;
   line-height: 1.22;
+  text-align: left;
   text-shadow: 0 2px 5px rgba(0, 0, 0, 0.96);
+}
+
+.log-icon {
+  flex-shrink: 0;
+  font-size: 17.6px;
+  line-height: 1;
+}
+
+.log-text {
+  flex: 1;
 }
 
 .mini-code {
