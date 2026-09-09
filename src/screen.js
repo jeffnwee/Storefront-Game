@@ -1910,12 +1910,12 @@ function scheduleLevelAdvance(state) {
   }, 4200);
 }
 
-const ABANDONED_SESSION_GRACE_MS = 45000; // 45s buffer for brief reconnects
+const ABANDONED_SESSION_GRACE_MS = 10000; // 10s buffer for brief reconnects
 let abandonedSessionTimer = null;
 
 function scheduleAbandonedSessionReset(state) {
   const isActiveSession = state && !["attract", "game-over"].includes(state.status);
-  const hasConnectedPlayers = Boolean(state?.presence && Object.keys(state.presence).length > 0);
+  const hasConnectedPlayers = Boolean(state?.presence && Object.values(state.presence).some((connected) => connected === true));
 
   if (!isActiveSession || hasConnectedPlayers) {
     window.clearTimeout(abandonedSessionTimer);
