@@ -28,7 +28,7 @@ const MOVE_ANIMATION_READY_TIMEOUT_MS = 10000;
 const MOVE_ANIMATION_PLAYBACK_WATCHDOG_MS = 2200;
 const BATTLE_BACKGROUND_RESUME_DELAY_MS = 180;
 const GAME_OVER_REVEAL_DELAY_MS = 1650;
-const GAME_OVER_RESET_DELAY_MS = 8000;
+const GAME_OVER_RESET_DELAY_MS = 15000;
 const MOVE_ANIMATION_VERSION = "20260812-alpha-kiosk1";
 const IDLE_ANIMATION_VERSION = "20260724-idle-perf2";
 const IDLE_BACKGROUND_VERSION = "20260724-idle-perf2";
@@ -48,6 +48,7 @@ const elements = {
   tutorialWaitingText: $("tutorialWaitingText"),
   websiteQr: $("websiteQr"),
   websiteQrFallback: $("websiteQrFallback"),
+  voucherQrPanel: $("voucherQrPanel"),
   idleBattleBackground: $("idleBattleBackground"),
   idleBattleMove: $("idleBattleMove"),
   idlePlayerFighter: $("idlePlayerFighter"),
@@ -1687,6 +1688,9 @@ function renderGameOver(state) {
   elements.gameOverMessage.textContent = playersWon
     ? `The curry party cleared all ${getLevelCount(state.mode || "solo")} levels. A fresh code will appear for the next battle.`
     : "The monster held the screen. A fresh code will appear for the next battle.";
+  if (elements.voucherQrPanel) {
+    elements.voucherQrPanel.hidden = !playersWon;
+  }
 }
 
 function render(state) {
@@ -2054,7 +2058,7 @@ async function activateSession(nextGameId, createNew) {
     render(state);
     scheduleLevelAdvance(state);
     scheduleGameOverReset(state);
-    scheduleAbandonedSessionReset(state); 
+    scheduleAbandonedSessionReset(state);
     resolveTutorialAcknowledgement(state).catch((error) => {
       console.error("Could not resolve tutorial acknowledgement", error);
       tutorialDismissToken = null;

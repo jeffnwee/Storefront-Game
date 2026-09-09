@@ -1467,3 +1467,11 @@ button:disabled {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+.voucher-countdown-text {
+  margin: 6px 0 0;
+  color: #4a3724;
+  font-size: 14.72px;
+  font-weight: 600;
+  line-height: 1.3;
+}
