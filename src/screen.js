@@ -88,7 +88,10 @@ const elements = {
   gameOverEyebrow: $("gameOverEyebrow"),
   resetButton: $("resetButton"),
   copyJoinButton: $("copyJoinButton"),
-  fullScreenButton: $("fullScreenButton")
+  fullScreenButton: $("fullScreenButton"),
+  resetCountdownBanner: $("resetCountdownBanner"),
+  resetCountdownLabel: $("resetCountdownLabel"),
+  resetCountdownValue: $("resetCountdownValue")
 };
 
 let resolvingToken = null;
@@ -1381,7 +1384,7 @@ function effectText(fighter) {
   if (effects.burnTurns > 0) parts.push("Burning");
   if (effects.tauntTurns > 0) parts.push("Taunting");
 
-  return parts.join(" / ");
+  return `Effects: ${parts.length ? parts.join(" / ") : "None"}`;
 }
 
 function renderHp(track, label, fighter) {
@@ -1661,7 +1664,7 @@ function renderBattle(state) {
   } else {
     elements.battleStatus.textContent = readyCount >= aliveIds.length
       ? "Moves locked. Resolving now!"
-      : `Now pick your move on your phone! ${readyCount}/${aliveIds.length} ready`;
+      : "Now pick your move on your phone!";
   }
 
   const chosenMoves = players
@@ -1673,7 +1676,8 @@ function renderBattle(state) {
       prepareMoveAnimation(move, elements.moveAnimations[index % elements.moveAnimations.length]);
     });
   }
-  elements.lastMoves.textContent = chosenMoves.length ? `Locked moves: ${chosenMoves.map((move) => move.name).join(" + ")}` : "";
+
+  elements.lastMoves.textContent = "Battle Log";
   renderLog(state.log, players, monster);
   animateResolvingMoves(state);
   animateRoundOutcome(state, previousSnapshot);
@@ -1917,6 +1921,38 @@ function scheduleLevelAdvance(state) {
 const ABANDONED_SESSION_GRACE_MS = 10000; // 10s buffer for brief reconnects
 let abandonedSessionTimer = null;
 
+let resetCountdownInterval = null;
+let resetCountdownEndAt = null;
+
+function updateResetCountdownText(label) {
+  if (!elements.resetCountdownLabel || !elements.resetCountdownValue) return;
+  const remainingMs = Math.max(0, resetCountdownEndAt - Date.now());
+  const seconds = Math.ceil(remainingMs / 1000);
+  elements.resetCountdownLabel.textContent = label;
+  elements.resetCountdownValue.textContent = `${seconds}s`;
+  if (remainingMs <= 0) {
+    window.clearInterval(resetCountdownInterval);
+    resetCountdownInterval = null;
+  }
+}
+
+function showResetCountdown(durationMs, label) {
+  if (!elements.resetCountdownBanner) return;
+  resetCountdownEndAt = Date.now() + durationMs;
+  elements.resetCountdownBanner.hidden = false;
+  updateResetCountdownText(label);
+  window.clearInterval(resetCountdownInterval);
+  resetCountdownInterval = window.setInterval(() => updateResetCountdownText(label), 250);
+}
+
+function hideResetCountdown() {
+  if (!elements.resetCountdownBanner) return;
+  elements.resetCountdownBanner.hidden = true;
+  window.clearInterval(resetCountdownInterval);
+  resetCountdownInterval = null;
+  resetCountdownEndAt = null;
+}
+
 function scheduleAbandonedSessionReset(state) {
   const isActiveSession = state && !["attract", "game-over"].includes(state.status);
   const expectedPlayerIds = Array.isArray(state?.playerOrder) && state.playerOrder.length
@@ -1929,8 +1965,11 @@ function scheduleAbandonedSessionReset(state) {
   console.log("[abandon-check]", { status: state?.status, expectedPlayerIds, presence, allPlayersConnected, timerRunning: Boolean(abandonedSessionTimer) });
 
   if (!isActiveSession || allPlayersConnected) {
-    window.clearTimeout(abandonedSessionTimer);
-    abandonedSessionTimer = null;
+    if (abandonedSessionTimer) {
+      window.clearTimeout(abandonedSessionTimer);
+      abandonedSessionTimer = null;
+      hideResetCountdown();
+    }
     return;
   }
 
@@ -1940,14 +1979,20 @@ function scheduleAbandonedSessionReset(state) {
 
   abandonedSessionTimer = window.setTimeout(() => {
     abandonedSessionTimer = null;
+    hideResetCountdown();
     rotateToNewSession().catch((error) => console.error("Could not auto-reset abandoned session", error));
   }, ABANDONED_SESSION_GRACE_MS);
+
+  showResetCountdown(ABANDONED_SESSION_GRACE_MS, "Player disconnected. Resetting game");
 }
 
 function scheduleGameOverReset(state) {
   if (state?.status !== "game-over") {
-    window.clearTimeout(gameOverTimer);
-    gameOverTimer = null;
+    if (gameOverTimer) {
+      window.clearTimeout(gameOverTimer);
+      gameOverTimer = null;
+      hideResetCountdown();
+    }
     return;
   }
 
@@ -1957,8 +2002,11 @@ function scheduleGameOverReset(state) {
 
   gameOverTimer = window.setTimeout(() => {
     gameOverTimer = null;
+    hideResetCountdown();
     rotateToNewSession().catch((error) => console.error("Could not rotate game code", error));
   }, GAME_OVER_RESET_DELAY_MS);
+
+  showResetCountdown(GAME_OVER_RESET_DELAY_MS, "Next game starting");
 }
 
 function bindControls() {

@@ -567,8 +567,8 @@ button:disabled {
   top: 49%;
   left: 50%;
   z-index: 3;
-  width: 240px;
-  height: 240px;
+  width: 380px;
+  height: 380px;
   opacity: 0;
   object-fit: contain;
   transform: translate(-50%, -50%) scale(0.7);
@@ -578,7 +578,7 @@ button:disabled {
 
 .live-monster-portrait.is-showing {
   opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  transform: translate(-50%, -50%) scale(1.1);
 }
 
 .move-animation {
@@ -745,6 +745,7 @@ button:disabled {
   --fighter-accent: var(--gold);
   display: grid;
   gap: 8px;
+  align-content: start;
   min-width: 0;
   padding: 10px;
   border: 1px solid rgba(255, 255, 255, 0.42);
@@ -850,13 +851,21 @@ button:disabled {
 .monster-card {
   min-height: 430px;
   justify-content: center;
+  justify-items: stretch;
+  text-align: left;
+}
+
+.monster-card .combat-label,
+.monster-card .hp-row,
+.monster-card .effect-line {
+  width: 100%;
 }
 
 .player-card:only-child {
   min-height: 430px;
   justify-content: center;
-  justify-items: center;
-  text-align: center;
+  justify-items: stretch;
+  text-align: left;
 }
 
 .player-card:only-child .combat-label,
@@ -873,7 +882,14 @@ button:disabled {
   color: #fff8e9;
   font-size: 15.2px;
   font-weight: 800;
+  line-height: 1.5;
   text-shadow: 0 2px 5px rgba(0, 0, 0, 0.96);
+}
+
+#lastMoves {
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .locked-move,
@@ -984,6 +1000,45 @@ button:disabled {
   30% { opacity: 1; transform: translate(-50%, -50%) rotate(8deg) scale(1.2); }
   72% { opacity: 1; transform: translate(-50%, -50%) rotate(-5deg) scale(0.94); }
   100% { opacity: 0; transform: translate(-50%, -50%) rotate(-2deg) scale(1.5); }
+}
+
+.reset-countdown-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 10px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 247, 232, 0.96);
+  color: var(--ink);
+  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.28);
+}
+
+.reset-countdown-label {
+  color: #4a3724;
+  font-size: 14px;
+  font-weight: 1000;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+.reset-countdown-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: 1000;
 }
 
 .staff-controls {
