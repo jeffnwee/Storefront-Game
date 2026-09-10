@@ -1919,9 +1919,16 @@ let abandonedSessionTimer = null;
 
 function scheduleAbandonedSessionReset(state) {
   const isActiveSession = state && !["attract", "game-over"].includes(state.status);
-  const hasConnectedPlayers = Boolean(state?.presence && Object.values(state.presence).some((connected) => connected === true));
+  const expectedPlayerIds = Array.isArray(state?.playerOrder) && state.playerOrder.length
+    ? state.playerOrder
+    : Object.keys(state?.lobby || {});
+  const presence = state?.presence || {};
+  const allPlayersConnected = expectedPlayerIds.length > 0
+    && expectedPlayerIds.every((id) => presence[id] === true);
 
-  if (!isActiveSession || hasConnectedPlayers) {
+  console.log("[abandon-check]", { status: state?.status, expectedPlayerIds, presence, allPlayersConnected, timerRunning: Boolean(abandonedSessionTimer) });
+
+  if (!isActiveSession || allPlayersConnected) {
     window.clearTimeout(abandonedSessionTimer);
     abandonedSessionTimer = null;
     return;
@@ -2050,15 +2057,35 @@ async function activateSession(nextGameId, createNew) {
 
   const activeGameId = gameId;
   unsubscribe = onValue(sessionRef, (nextSnapshot) => {
-    if (gameId !== activeGameId) {
-      return;
-    }
+    if (gameId !== activeGameId) return;
 
     const state = nextSnapshot.val();
-    render(state);
-    scheduleLevelAdvance(state);
-    scheduleGameOverReset(state);
-    scheduleAbandonedSessionReset(state);
+
+    try {
+      render(state);
+    } catch (error) {
+      console.error("render() failed", error);
+    }
+
+    try {
+      scheduleLevelAdvance(state);
+    } catch (error) {
+      console.error("scheduleLevelAdvance() failed", error);
+    }
+
+    try {
+      scheduleGameOverReset(state);
+    } catch (error) {
+      console.error("scheduleGameOverReset() failed", error);
+    }
+
+    // Always run this one, no matter what happened above.
+    try {
+      scheduleAbandonedSessionReset(state);
+    } catch (error) {
+      console.error("scheduleAbandonedSessionReset() failed", error);
+    }
+
     resolveTutorialAcknowledgement(state).catch((error) => {
       console.error("Could not resolve tutorial acknowledgement", error);
       tutorialDismissToken = null;
