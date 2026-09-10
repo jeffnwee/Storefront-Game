@@ -375,6 +375,12 @@ button:disabled {
   text-align: right;
 }
 
+.brand-logo {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
 .eyebrow {
   display: block;
   margin: 0 0 8px;
