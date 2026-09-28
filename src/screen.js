@@ -2,13 +2,16 @@ import { allAlivePlayersHaveMoves, prepareNextLevel, resolveRound } from "./batt
 import { CHARACTERS, LEVELS, getLevelCount, getMove } from "./game-data.js?v=20260808-hard-enemies";
 import {
   allPlayersAcknowledgedTutorial,
+  appendLog,
   createAttractSession,
   formatGameCode,
   getAlivePlayerIds,
   getGameId,
   getLobbyEntries,
   getOrderedPlayers,
-  hpPercent
+  hpPercent,
+  buildMonster,
+  buildPlayer
 } from "./shared.js?v=20260808-hard-enemies";
 
 let get;
@@ -21,6 +24,11 @@ let serverTimestamp;
 let set;
 let update;
 let db;
+let firestoreDb;
+let fsDoc;
+let fsSetDoc;
+let fsTimestamp;
+let fsServerTimestamp;
 
 const DESIGN_WIDTH = 577;
 const DESIGN_HEIGHT = 1439;
@@ -267,8 +275,9 @@ function renderWebsiteQr() {
 }
 
 async function connectFirebase() {
-  const [databaseModule, firebaseModule] = await Promise.all([
+  const [databaseModule, firestoreModule, firebaseModule] = await Promise.all([
     import("https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js"),
+    import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"),
     import("./firebase.js")
   ]);
 
@@ -284,6 +293,11 @@ async function connectFirebase() {
     update
   } = databaseModule);
   db = firebaseModule.db;
+  firestoreDb = firebaseModule.firestore;
+  fsDoc = firestoreModule.doc;
+  fsSetDoc = firestoreModule.setDoc;
+  fsTimestamp = firestoreModule.Timestamp;
+  fsServerTimestamp = firestoreModule.serverTimestamp;
   await firebaseModule.authReady;
 }
 
@@ -1983,9 +1997,12 @@ function hideResetCountdown() {
 
 function scheduleAbandonedSessionReset(state) {
   const isActiveSession = state && !["attract", "game-over"].includes(state.status);
-  const expectedPlayerIds = Array.isArray(state?.playerOrder) && state.playerOrder.length
+  const expectedPlayerIds = (Array.isArray(state?.playerOrder) && state.playerOrder.length
     ? state.playerOrder
-    : Object.keys(state?.lobby || {});
+    : Object.keys(state?.lobby || {}))
+    // A player who tapped Leave has no lobby entry any more. That is a deliberate exit,
+    // handled by resolveLeavers(), not a dropped connection that should reset the game.
+    .filter((id) => Boolean(state?.lobby?.[id]));
   const presence = state?.presence || {};
   const allPlayersConnected = expectedPlayerIds.length > 0
     && expectedPlayerIds.every((id) => presence[id] === true);
@@ -2035,6 +2052,315 @@ function scheduleGameOverReset(state) {
   }, GAME_OVER_RESET_DELAY_MS);
 
   showResetCountdown(GAME_OVER_RESET_DELAY_MS, "Next game starting");
+}
+
+// ---------------------------------------------------------------------------
+// Kiosk-owned game flow.
+// Phones only write their own lobby entry, their own move and their tutorial tick.
+// Everything else (lobby -> character select -> battle, and win records) is done here,
+// because only the staff-signed-in kiosk is allowed to write it.
+// ---------------------------------------------------------------------------
+const WIN_VALID_MS = 24 * 60 * 60 * 1000; // how long a winner can collect the voucher
+let lobbyTransitionToken = null;
+let battleStartToken = null;
+let winsRecordedForGame = null;
+let slotConflictToken = null;
+
+// Phones assign themselves a slot (0 or 1) client-side by reading the lobby before they
+// write. Two phones joining at the exact same instant can both read an empty lobby and
+// both pick slot 0 — nothing stops that race, since each phone can only write its own
+// lobby/{id} key, not see-and-lock its sibling's. The kiosk is the only party with full
+// write access to the session, so it's the one place that can notice and fix a collision:
+// if two entries claim the same slot (or an out-of-range slot), renumber them
+// deterministically by joinedAt so every client converges on the same result.
+async function resolveLobbySlotConflicts(state) {
+  if (!state || !sessionRef) {
+    return;
+  }
+
+  // Slot numbers only matter before a battle is built: buildPlayer() (see section 2 of
+  // resolveLobbyTransitions below) assigns players by sorted array index, not by raw
+  // entry.slot, once players/activePlayerIds exist. No need to touch it after that.
+  if (!["attract", "lobby", "character-select"].includes(state.status)) {
+    slotConflictToken = null;
+    return;
+  }
+
+  const entries = getLobbyEntries(state).slice(0, 2);
+  if (entries.length < 2) {
+    slotConflictToken = null;
+    return;
+  }
+
+  const usedSlots = new Set(entries.map((entry) => Number(entry.slot)));
+  const hasConflict = usedSlots.size !== entries.length
+    || entries.some((entry) => ![0, 1].includes(Number(entry.slot)));
+
+  if (!hasConflict) {
+    slotConflictToken = null;
+    return;
+  }
+
+  const token = `${state.status}|${entries.map((entry) => `${entry.id}:${entry.slot}`).join(",")}`;
+  if (slotConflictToken === token) {
+    return;
+  }
+  slotConflictToken = token;
+
+  const activeGameId = gameId;
+  const activeSessionRef = sessionRef;
+
+  // Earliest joinedAt wins slot 0; tie-break on id so all clients agree on the same order.
+  const canonical = [...entries].sort((a, b) => {
+    const at = Number(a.joinedAt || 0);
+    const bt = Number(b.joinedAt || 0);
+    return at !== bt ? at - bt : String(a.id).localeCompare(String(b.id));
+  });
+
+  const updates = {};
+  canonical.forEach((entry, index) => {
+    if (Number(entry.slot) !== index) {
+      updates[`lobby/${entry.id}/slot`] = index;
+      updates[`lobby/${entry.id}/label`] = `Player ${index + 1}`;
+    }
+  });
+
+  if (!Object.keys(updates).length) {
+    return;
+  }
+
+  // Re-check against a live snapshot before writing, same pattern as resolveLobbyTransitions,
+  // so a reset or status change that happened while we were computing this doesn't get clobbered.
+  const snapshot = await get(activeSessionRef);
+  const liveState = snapshot.val();
+  if (gameId !== activeGameId || !liveState || !["attract", "lobby", "character-select"].includes(liveState.status)) {
+    slotConflictToken = null;
+    return;
+  }
+
+  updates.lastActionAt = serverTimestamp();
+  await update(activeSessionRef, updates);
+}
+
+async function resolveLobbyTransitions(state) {
+  if (!state || !sessionRef) {
+    return;
+  }
+
+  const entries = getLobbyEntries(state);
+  const activeGameId = gameId;
+  const activeSessionRef = sessionRef;
+
+  // 1. Players joining: attract -> lobby -> character-select
+  if (state.status === "attract" || state.status === "lobby") {
+    let next = null;
+    if (entries.length >= 2) {
+      next = { status: "character-select", mode: "multiplayer" };
+    } else if (entries.length === 1 && entries[0].soloRequested === true) {
+      next = { status: "character-select", mode: "solo" };
+    } else if (entries.length === 1 && state.status === "attract") {
+      next = { status: "lobby" };
+    }
+
+    if (!next) {
+      lobbyTransitionToken = null;
+      return;
+    }
+
+    const token = `${state.status}|${entries.map((entry) => entry.id).join(",")}|${next.status}|${next.mode || ""}`;
+    if (lobbyTransitionToken === token) {
+      return;
+    }
+    lobbyTransitionToken = token;
+
+    const snapshot = await get(activeSessionRef);
+    const liveState = snapshot.val();
+    if (gameId !== activeGameId || !liveState || !["attract", "lobby"].includes(liveState.status)) {
+      lobbyTransitionToken = null;
+      return;
+    }
+
+    await update(activeSessionRef, { ...next, lastActionAt: serverTimestamp() });
+    return;
+  }
+
+  // 2. Everyone has confirmed a character: build the battle.
+  if (state.status === "character-select") {
+    const expectedCount = state.mode === "multiplayer" ? 2 : 1;
+    const readyEntries = entries
+      .filter((entry) => entry.confirmed && entry.characterId)
+      .sort((a, b) => Number(a.slot || 0) - Number(b.slot || 0))
+      .slice(0, expectedCount);
+
+    if (readyEntries.length < expectedCount) {
+      battleStartToken = null;
+      return;
+    }
+
+    const token = `${activeGameId}|${readyEntries.map((entry) => `${entry.id}:${entry.characterId}`).join(",")}`;
+    if (battleStartToken === token) {
+      return;
+    }
+    battleStartToken = token;
+
+    const snapshot = await get(activeSessionRef);
+    const liveState = snapshot.val();
+    if (gameId !== activeGameId || !liveState || liveState.status !== "character-select") {
+      battleStartToken = null;
+      return;
+    }
+
+    const mode = liveState.mode === "multiplayer" ? "multiplayer" : "solo";
+    const playerOrder = readyEntries.map((entry) => entry.id);
+    const players = Object.fromEntries(readyEntries.map((entry, index) => [
+      entry.id,
+      buildPlayer(entry.characterId, entry.id, index)
+    ]));
+    const monster = buildMonster(mode, 0);
+    const log = [
+      `${readyEntries.length === 2 ? "Two players" : "One player"} entered ${mode === "multiplayer" ? "co-op" : "solo"} mode.`,
+      `${monster.name} enters the battle.`
+    ];
+
+    await update(activeSessionRef, {
+      status: "battle",
+      activePlayerIds: playerOrder,
+      playerOrder,
+      players,
+      monster,
+      levelIndex: 0,
+      turn: 1,
+      pendingMoves: {},
+      activeMoves: {},
+      roundResult: { messages: log, createdAt: Date.now() },
+      winner: null,
+      log,
+      showTutorial: true,
+      tutorialAcks: {},
+      battleStartedAt: serverTimestamp(),
+      lastActionAt: serverTimestamp()
+    });
+    return;
+  }
+
+  lobbyTransitionToken = null;
+  battleStartToken = null;
+}
+
+// When the players really win, write a short-lived "win" record for each winning phone.
+// Firestore only lets a phone read vouchers/storefront-win if its record exists.
+async function recordWins(state) {
+  if (state?.status !== "game-over" || state.winner !== "players") {
+    return;
+  }
+
+  if (winsRecordedForGame === gameId) {
+    return;
+  }
+  winsRecordedForGame = gameId;
+
+  const activeGameId = gameId;
+  const uids = getOrderedPlayers(state)
+    .map((player) => state.lobby?.[player.id]?.uid)
+    .filter(Boolean);
+
+  try {
+    await Promise.all(uids.map((uid) => fsSetDoc(fsDoc(firestoreDb, "wins", uid), {
+      gameId: activeGameId,
+      createdAt: fsServerTimestamp(),
+      expiresAt: fsTimestamp.fromMillis(Date.now() + WIN_VALID_MS)
+    })));
+  } catch (error) {
+    winsRecordedForGame = null;
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mid-game "Leave Game".
+// A phone can only delete its own lobby entry (see database rules), so that deletion is
+// the leave signal. Only the kiosk may edit players/playerOrder/activePlayerIds, so it
+// removes the leaver here and lets any teammate carry on.
+const IN_GAME_STATUSES = ["battle", "resolving", "level-complete"];
+let leaverToken = null;
+
+async function resolveLeavers(state) {
+  if (!state || !sessionRef || !IN_GAME_STATUSES.includes(state.status)) {
+    leaverToken = null;
+    return;
+  }
+
+  const activeIds = Array.isArray(state.activePlayerIds) ? state.activePlayerIds : [];
+  const leftIds = activeIds.filter((id) => !state.lobby?.[id]);
+  if (!leftIds.length) {
+    leaverToken = null;
+    return;
+  }
+
+  // Wait out an in-flight round: resolvePendingMoves rewrites players/pendingMoves when its
+  // animation timer fires and would clash with this edit. The snapshot after the round
+  // (status back to battle / level-complete / game-over) re-triggers this function.
+  if (state.status === "resolving") {
+    return;
+  }
+
+  const token = `${gameId}|${state.status}|${leftIds.join(",")}`;
+  if (leaverToken === token) {
+    return;
+  }
+  leaverToken = token;
+
+  const activeGameId = gameId;
+  const activeSessionRef = sessionRef;
+  const snapshot = await get(activeSessionRef);
+  const live = snapshot.val();
+  if (gameId !== activeGameId || !live || !IN_GAME_STATUSES.includes(live.status) || live.status === "resolving") {
+    leaverToken = null;
+    return;
+  }
+
+  const gone = (Array.isArray(live.activePlayerIds) ? live.activePlayerIds : []).filter((id) => !live.lobby?.[id]);
+  if (!gone.length) {
+    leaverToken = null;
+    return;
+  }
+
+  const remainingOrder = (Array.isArray(live.playerOrder) ? live.playerOrder : []).filter((id) => !gone.includes(id));
+  const remainingActive = (Array.isArray(live.activePlayerIds) ? live.activePlayerIds : []).filter((id) => !gone.includes(id));
+
+  // Nobody left (solo player quit, or both co-op players quit): reset right away.
+  if (!remainingOrder.length) {
+    await rotateToNewSession();
+    return;
+  }
+
+  const messages = gone.map((id) => `${live.players?.[id]?.name || "A player"} left the game.`);
+  const updates = {
+    playerOrder: remainingOrder,
+    activePlayerIds: remainingActive,
+    log: appendLog(live.log, messages),
+    lastActionAt: serverTimestamp()
+  };
+  gone.forEach((id) => {
+    updates[`players/${id}`] = null;
+    updates[`pendingMoves/${id}`] = null;
+    updates[`activeMoves/${id}`] = null;
+    updates[`tutorialAcks/${id}`] = null;
+    updates[`presence/${id}`] = null;
+  });
+
+  // If the only player still standing was the one who left, the party has lost. Without
+  // this the game would sit in "battle" forever: allAlivePlayersHaveMoves needs an alive player.
+  const someoneAlive = remainingOrder.some((id) => Number(live.players?.[id]?.hp || 0) > 0);
+  if (live.status === "battle" && !someoneAlive) {
+    updates.status = "game-over";
+    updates.winner = "monster";
+    updates.gameOverAt = serverTimestamp();
+    updates.log = appendLog(live.log, [...messages, "All players are out of HP."]);
+  }
+
+  await update(activeSessionRef, updates);
+  leaverToken = null;
 }
 
 function bindControls() {
@@ -2210,6 +2536,22 @@ async function activateSession(nextGameId, createNew) {
     resolvePendingMoves(state).catch((error) => {
       console.error("Could not resolve moves", error);
       resolvingToken = null;
+    });
+    resolveLeavers(state).catch((error) => {
+      console.error("Could not remove leaving player", error);
+      leaverToken = null;
+    });
+    resolveLobbySlotConflicts(state).catch((error) => {
+      console.error("Could not resolve lobby slot conflict", error);
+      slotConflictToken = null;
+    });
+    resolveLobbyTransitions(state).catch((error) => {
+      console.error("Could not update lobby", error);
+      lobbyTransitionToken = null;
+      battleStartToken = null;
+    });
+    recordWins(state).catch((error) => {
+      console.error("Could not record win", error);
     });
   });
 }

@@ -343,7 +343,9 @@ export function resolveRound(state) {
   applyStartEffects(monster, messages);
 
   players.forEach((player) => {
-    const moveId = pendingMoves[player.id]?.moveId || player.moves?.[0];
+    // Only accept moves this character really has; anything else falls back to their first move.
+    const requestedMoveId = pendingMoves[player.id]?.moveId;
+    const moveId = player.moves?.includes(requestedMoveId) ? requestedMoveId : player.moves?.[0];
     const move = getMove(moveId);
     applyMove(player, move, players, monster, messages);
   });
