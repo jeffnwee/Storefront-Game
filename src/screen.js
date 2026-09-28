@@ -12,9 +12,11 @@ import {
 } from "./shared.js?v=20260808-hard-enemies";
 
 let get;
+let onDisconnect;
 let onValue;
 let ref;
 let remove;
+let runTransaction;
 let serverTimestamp;
 let set;
 let update;
@@ -206,6 +208,28 @@ async function findAvailableGameId(excludedGameId = null) {
   throw new Error("Could not allocate a four-digit game code.");
 }
 
+async function claimGameId(excludedGameId = null) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const candidate = generateFourDigitCode();
+    if (candidate === excludedGameId) {
+      continue;
+    }
+
+    const result = await runTransaction(ref(db, `sessions/${candidate}`), (current) => {
+      if (current !== null) {
+        return undefined; // code already in use, abort
+      }
+      return createAttractSession(candidate, null, serverTimestamp());
+    });
+
+    if (result.committed) {
+      return candidate;
+    }
+  }
+
+  throw new Error("Could not allocate a four-digit game code.");
+}
+
 function updateGameCodeLabels(state = null) {
   elements.gameCodeLabel.textContent = gameCode || "----";
   elements.lobbyCode.textContent = gameCode || "----";
@@ -250,9 +274,11 @@ async function connectFirebase() {
 
   ({
     get,
+    onDisconnect,
     onValue,
     ref,
     remove,
+    runTransaction,
     serverTimestamp,
     set,
     update
@@ -1760,12 +1786,13 @@ async function rotateToNewSession() {
   }
 
   try {
-    const nextGameId = await findAvailableGameId(previousGameId);
+    const nextGameId = await claimGameId(previousGameId);
     if (previousRef) {
+      await disarmSessionCleanup(previousRef);
       await remove(previousRef);
     }
 
-    await activateSession(nextGameId, true);
+      await activateSession(await claimGameId(), false);
   } finally {
     rotatingSession = false;
   }
@@ -2090,6 +2117,40 @@ async function boot() {
   await activateSession(await findAvailableGameId(), true);
 }
 
+let connectedUnsubscribe = null;
+
+function armSessionCleanup() {
+  if (connectedUnsubscribe) {
+    connectedUnsubscribe();
+    connectedUnsubscribe = null;
+  }
+
+  const cleanupRef = sessionRef;
+  connectedUnsubscribe = onValue(ref(db, ".info/connected"), (snapshot) => {
+    if (snapshot.val() !== true) {
+      return;
+    }
+    onDisconnect(cleanupRef).remove().catch((error) => {
+      console.warn("Could not arm session cleanup", error);
+    });
+  });
+}
+
+async function disarmSessionCleanup(targetRef) {
+  if (connectedUnsubscribe) {
+    connectedUnsubscribe();
+    connectedUnsubscribe = null;
+  }
+
+  if (targetRef) {
+    try {
+      await onDisconnect(targetRef).cancel();
+    } catch (error) {
+      console.warn("Could not cancel session cleanup", error);
+    }
+  }
+}
+
 async function activateSession(nextGameId, createNew) {
   cancelAllMoveAnimationReadiness();
   moveAnimationReadinessByToken.clear();
@@ -2104,9 +2165,16 @@ async function activateSession(nextGameId, createNew) {
     await set(sessionRef, createAttractSession(gameId, null, serverTimestamp()));
   }
 
+  armSessionCleanup();
+
   const activeGameId = gameId;
   unsubscribe = onValue(sessionRef, (nextSnapshot) => {
     if (gameId !== activeGameId) return;
+
+    if (state === null && !rotatingSession) {
+      rotateToNewSession().catch((error) => console.error("Could not recover deleted session", error));
+      return;
+    }
 
     const state = nextSnapshot.val();
 
