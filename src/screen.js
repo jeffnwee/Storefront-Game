@@ -1792,7 +1792,7 @@ async function rotateToNewSession() {
       await remove(previousRef);
     }
 
-      await activateSession(await claimGameId(), false);
+    await activateSession(nextGameId, false);
   } finally {
     rotatingSession = false;
   }
@@ -2114,7 +2114,7 @@ async function boot() {
     }
   }
 
-  await activateSession(await findAvailableGameId(), true);
+  await activateSession(await claimGameId(), false);
 }
 
 let connectedUnsubscribe = null;
