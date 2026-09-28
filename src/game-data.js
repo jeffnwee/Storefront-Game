@@ -547,14 +547,14 @@ const IDLE_BACKGROUNDS = Object.freeze({
 
 export const LEVELS = Object.freeze({
   solo: [
-    { name: "Curry Goblin", maxHp: 600, atk: 70, color: "#657d2f", accent: "#f5ad0f", asset: "./assets/enemies/curry-goblin.webp", idleBackground: IDLE_BACKGROUNDS.curryGoblin, moves: ["sauce-swipe", "curry-splash"] },
-    { name: "Root Curry Brute", maxHp: 800, atk: 78, color: "#a9601d", accent: "#8cad2d", asset: "./assets/enemies/root-curry-brute.webp", idleBackground: IDLE_BACKGROUNDS.rootCurryBrute, moves: ["root-bash", "gravy-snare"] },
-    { name: "Sporeback Brute", maxHp: 1000, atk: 86, color: "#557329", accent: "#c7b274", asset: "./assets/enemies/sporeback-brute.webp", idleBackground: IDLE_BACKGROUNDS.sporebackBrute, moves: ["spore-punch", "mushroom-haze", "fungal-guard"] }
+    { name: "Curry Goblin", maxHp: 1200, atk: 80, color: "#657d2f", accent: "#f5ad0f", asset: "./assets/enemies/curry-goblin.webp", idleBackground: IDLE_BACKGROUNDS.curryGoblin, moves: ["sauce-swipe", "curry-splash"] },
+    ///{ name: "Root Curry Brute", maxHp: 800, atk: 78, color: "#a9601d", accent: "#8cad2d", asset: "./assets/enemies/root-curry-brute.webp", idleBackground: IDLE_BACKGROUNDS.rootCurryBrute, moves: ["root-bash", "gravy-snare"] },
+    ///{ name: "Sporeback Brute", maxHp: 1000, atk: 86, color: "#557329", accent: "#c7b274", asset: "./assets/enemies/sporeback-brute.webp", idleBackground: IDLE_BACKGROUNDS.sporebackBrute, moves: ["spore-punch", "mushroom-haze", "fungal-guard"] }
   ],
   multiplayer: [
-    { name: "Curry Goblin", maxHp: 1400, atk: 82, color: "#657d2f", accent: "#f5ad0f", asset: "./assets/enemies/curry-goblin.webp", idleBackground: IDLE_BACKGROUNDS.curryGoblin, moves: ["sauce-swipe", "curry-splash", "curry-cloud"] },
-    { name: "Root Curry Brute", maxHp: 1780, atk: 92, color: "#a9601d", accent: "#8cad2d", asset: "./assets/enemies/root-curry-brute.webp", idleBackground: IDLE_BACKGROUNDS.rootCurryBrute, moves: ["root-bash", "gravy-snare", "root-guard"] },
-    { name: "Sporeback Brute", maxHp: 2180, atk: 102, color: "#557329", accent: "#c7b274", asset: "./assets/enemies/sporeback-brute.webp", idleBackground: IDLE_BACKGROUNDS.sporebackBrute, moves: ["spore-punch", "mushroom-haze", "fungal-guard"] }
+    { name: "Curry Goblin", maxHp: 2400, atk: 95, color: "#657d2f", accent: "#f5ad0f", asset: "./assets/enemies/curry-goblin.webp", idleBackground: IDLE_BACKGROUNDS.curryGoblin, moves: ["sauce-swipe", "curry-splash", "curry-cloud"] },
+    ///{ name: "Root Curry Brute", maxHp: 1780, atk: 92, color: "#a9601d", accent: "#8cad2d", asset: "./assets/enemies/root-curry-brute.webp", idleBackground: IDLE_BACKGROUNDS.rootCurryBrute, moves: ["root-bash", "gravy-snare", "root-guard"] },
+    ///{ name: "Sporeback Brute", maxHp: 2180, atk: 102, color: "#557329", accent: "#c7b274", asset: "./assets/enemies/sporeback-brute.webp", idleBackground: IDLE_BACKGROUNDS.sporebackBrute, moves: ["spore-punch", "mushroom-haze", "fungal-guard"] }
   ]
 });
 

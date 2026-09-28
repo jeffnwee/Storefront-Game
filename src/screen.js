@@ -258,6 +258,7 @@ async function connectFirebase() {
     update
   } = databaseModule);
   db = firebaseModule.db;
+  await firebaseModule.authReady;
 }
 
 function clearIdleElementAnimations(element) {
