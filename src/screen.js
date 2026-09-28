@@ -2171,12 +2171,12 @@ async function activateSession(nextGameId, createNew) {
   unsubscribe = onValue(sessionRef, (nextSnapshot) => {
     if (gameId !== activeGameId) return;
 
+    const state = nextSnapshot.val();
+
     if (state === null && !rotatingSession) {
       rotateToNewSession().catch((error) => console.error("Could not recover deleted session", error));
       return;
     }
-
-    const state = nextSnapshot.val();
 
     try {
       render(state);
