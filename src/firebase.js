@@ -74,7 +74,7 @@ function showStaffLogin() {
       await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
       window.localStorage.setItem(STAFF_EMAIL_KEY, emailInput.value.trim());
     } catch (error) {
-      errorText.textContent = "Sign-in failed. Check the email and password.";
+      errorText.textContent = `Sign-in failed (${error.code || error.message})`;
       console.warn("Staff sign-in failed", error);
     }
   });

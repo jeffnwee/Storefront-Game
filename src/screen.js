@@ -2154,10 +2154,10 @@ async function resolveLobbyTransitions(state) {
   // 1. Players joining: attract -> lobby -> character-select
   if (state.status === "attract" || state.status === "lobby") {
     let next = null;
-    if (entries.length >= 2) {
-      next = { status: "character-select", mode: "multiplayer" };
-    } else if (entries.length === 1 && entries[0].soloRequested === true) {
+    if (entries.some((entry) => entry.soloRequested === true)) {
       next = { status: "character-select", mode: "solo" };
+    } else if (entries.length >= 2) {
+      next = { status: "character-select", mode: "multiplayer" };
     } else if (entries.length === 1 && state.status === "attract") {
       next = { status: "lobby" };
     }
@@ -2180,7 +2180,15 @@ async function resolveLobbyTransitions(state) {
       return;
     }
 
-    await update(activeSessionRef, { ...next, lastActionAt: serverTimestamp() });
+    const updates = { ...next, lastActionAt: serverTimestamp() };
+    if (next.mode === "solo") {
+      entries
+        .filter((entry) => entry.soloRequested !== true)
+        .forEach((entry) => {
+          updates[`lobby/${entry.id}`] = null;
+        });
+    }
+    await update(activeSessionRef, updates);
     return;
   }
 
@@ -2189,6 +2197,7 @@ async function resolveLobbyTransitions(state) {
     const expectedCount = state.mode === "multiplayer" ? 2 : 1;
     const readyEntries = entries
       .filter((entry) => entry.confirmed && entry.characterId)
+      .filter((entry) => state.mode !== "solo" || entry.soloRequested === true)
       .sort((a, b) => Number(a.slot || 0) - Number(b.slot || 0))
       .slice(0, expectedCount);
 
