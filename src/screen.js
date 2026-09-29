@@ -1459,18 +1459,26 @@ function renderLobby(state) {
   const entries = getLobbyEntries(state);
 
   elements.lobbyTitle.textContent = entries.length >= 2 ? "Both players joined" : "Waiting for players";
-  elements.lobbyMessage.textContent = entries.length >= 2
-    ? "Co-op mode is starting automatically. Pick your characters on your phones."
-    : "A player can press Start on their phone to play solo. A second player starts co-op automatically.";
+  const soloChosenNow = state.mode === "solo"
+    || entries.some((entry) => entry.soloRequested === true);
+  elements.lobbyMessage.textContent = soloChosenNow
+    ? "Solo mode. Pick your character on your phone."
+    : entries.length >= 2
+      ? "Co-op mode is starting automatically. Pick your characters on your phones."
+      : "A player can press Start on their phone to play solo. A second player starts co-op automatically.";
   elements.lobbySlots.innerHTML = "";
+
+  const soloChosen = state.mode === "solo"
+    || entries.some((entry) => entry.soloRequested === true);
 
   [0, 1].forEach((slot) => {
     const entry = entries.find((item) => Number(item.slot) === slot);
+    const closed = !entry && soloChosen;
     const card = document.createElement("article");
     card.className = `lobby-slot ${entry ? "filled" : ""}`;
     card.innerHTML = `
       <span>Player ${slot + 1}</span>
-      <strong>${entry ? "Joined" : "Open"}</strong>
+      <strong>${entry ? "Joined" : closed ? "Closed" : "Open"}</strong>
     `;
     elements.lobbySlots.append(card);
   });
@@ -1996,6 +2004,16 @@ function hideResetCountdown() {
 }
 
 function scheduleAbandonedSessionReset(state) {
+
+  // An empty lobby is handled by scheduleCharacterTimeout (5s reset), so skip the 10s one.
+  if (["lobby", "character-select"].includes(state?.status) && getLobbyEntries(state).length === 0) {
+    if (abandonedSessionTimer) {
+      window.clearTimeout(abandonedSessionTimer);
+      abandonedSessionTimer = null;
+    }
+    return;
+  }
+  
   const isActiveSession = state && !["attract", "game-over"].includes(state.status);
   const expectedPlayerIds = (Array.isArray(state?.playerOrder) && state.playerOrder.length
     ? state.playerOrder
@@ -2103,6 +2121,7 @@ function scheduleMoveTimeout(state) {
 }
 
 const CHARACTER_TIMEOUT_MS = 45000;
+const EMPTY_LOBBY_RESET_MS = 5000;
 let characterTimeoutTimer = null;
 let characterTimeoutKey = null;
 
@@ -2119,6 +2138,30 @@ function stopCharacterTimeout() {
 
 function scheduleCharacterTimeout(state) {
   const entries = getLobbyEntries(state);
+  const preBattle = state?.status === "lobby" || state?.status === "character-select";
+
+  // Nobody is left in the lobby (for example a solo player pressed Start, then left):
+  // reset the game after a short countdown.
+  if (preBattle && entries.length === 0) {
+    const emptyKey = `${state.gameId || ""}:empty`;
+    if (emptyKey === characterTimeoutKey) {
+      return; // countdown already running
+    }
+
+    stopCharacterTimeout();
+    characterTimeoutKey = emptyKey;
+
+    characterTimeoutTimer = window.setTimeout(() => {
+      characterTimeoutTimer = null;
+      characterTimeoutKey = null;
+      hideResetCountdown();
+      rotateToNewSession().catch((error) => console.error("Could not reset empty lobby", error));
+    }, EMPTY_LOBBY_RESET_MS);
+
+    showResetCountdown(EMPTY_LOBBY_RESET_MS, "Lobby empty. Resetting game");
+    return;
+  }
+
   const expectedCount = state?.mode === "multiplayer" ? 2 : 1;
   const confirmedCount = entries.filter((entry) => entry.confirmed && entry.characterId).length;
   const waitingForCharacters = state?.status === "character-select" && confirmedCount < expectedCount;

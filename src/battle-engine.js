@@ -50,8 +50,9 @@ function heal(actor, pct) {
 
 function shield(actor, pct) {
   const amount = Math.round(actor.maxHp * Number(pct || 0));
+  const before = actor.shield;
   actor.shield = clamp(actor.shield + amount, 0, Math.round(actor.maxHp * 0.55));
-  return amount;
+  return actor.shield - before;
 }
 
 function applyDamage(target, amount) {
@@ -108,7 +109,17 @@ function applyStartEffects(fighter, messages) {
   }
 }
 
-function tickEffects(fighter) {
+// These effects begin the turn AFTER they are applied (duration 1 = one full next turn).
+// Guard, taunt and self-defense-down are NOT listed on purpose: they must work immediately.
+const DEFERRED_EFFECT_KEYS = ["attackUpTurns", "attackDownTurns", "regenTurns", "burnTurns"];
+
+function snapshotActiveEffects(fighter) {
+  return Object.fromEntries(
+    DEFERRED_EFFECT_KEYS.map((key) => [key, Number(fighter.effects?.[key] || 0) > 0])
+  );
+}
+
+function tickEffects(fighter, activeAtStart = {}) {
   const effects = fighter.effects || createEmptyEffects();
   [
     "attackUpTurns",
@@ -119,6 +130,10 @@ function tickEffects(fighter) {
     "burnTurns",
     "tauntTurns"
   ].forEach((key) => {
+    // Applied this round? Skip its first tick so it starts next turn.
+    if (DEFERRED_EFFECT_KEYS.includes(key) && !activeAtStart[key]) {
+      return;
+    }
     effects[key] = Math.max(0, Number(effects[key] || 0) - 1);
   });
 
@@ -339,6 +354,12 @@ export function resolveRound(state) {
   const pendingMoves = state.pendingMoves || {};
   const messages = [];
 
+  const startSnapshots = {};
+  players.forEach((player) => {
+    startSnapshots[player.id] = snapshotActiveEffects(player);
+  });
+  const monsterSnapshot = snapshotActiveEffects(monster);
+
   players.forEach((player) => applyStartEffects(player, messages));
   applyStartEffects(monster, messages);
 
@@ -367,8 +388,10 @@ export function resolveRound(state) {
     }
   } else {
     const alivePlayers = players.filter(isAlive);
-    const monsterMove = getMove(chooseMonsterMove(monster, alivePlayers));
-    applyMonsterMove(monster, monsterMove, alivePlayers, messages);
+    if (alivePlayers.length) {
+      const monsterMove = getMove(chooseMonsterMove(monster, alivePlayers));
+      applyMonsterMove(monster, monsterMove, alivePlayers, messages);
+    } 
 
     if (players.every((player) => !isAlive(player))) {
       status = "game-over";
@@ -377,8 +400,8 @@ export function resolveRound(state) {
     }
   }
 
-  players.forEach(tickEffects);
-  tickEffects(monster);
+  players.forEach((player) => tickEffects(player, startSnapshots[player.id]));
+  tickEffects(monster, monsterSnapshot);
 
   return {
     players: toPlayerObject(players),

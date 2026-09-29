@@ -32,11 +32,19 @@ function applyGameData(remote) {
   });
 
   const buildLevels = (levelsObj, mode) =>
-    Object.entries(levelsObj || {}).map(([levelKey, { moves: levelMoves, ...level }]) => {
-      const prefix = `${mode}:${levelKey}:`;
-      addMoves(levelMoves, prefix);
-      return { ...level, moves: sortedList(levelMoves).map((move) => `${prefix}${move.id}`) };
-    });
+    Object.entries(levelsObj || {})
+      .filter(([, level]) => level && typeof level === "object")
+      .sort(([keyA, levelA], [keyB, levelB]) => {
+        const orderA = Number(levelA.order ?? Infinity);
+        const orderB = Number(levelB.order ?? Infinity);
+        if (orderA !== orderB) return orderA < orderB ? -1 : 1;
+        return keyA.localeCompare(keyB, undefined, { numeric: true });
+      })
+      .map(([levelKey, { order, moves: levelMoves, ...level }]) => {
+        const prefix = `${mode}:${levelKey}:`;
+        addMoves(levelMoves, prefix);
+        return { ...level, moves: sortedList(levelMoves).map((move) => `${prefix}${move.id}`) };
+      });
 
   const levels = {
     solo: buildLevels(remote?.game?.solo, "solo"),
