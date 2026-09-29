@@ -482,6 +482,10 @@ button:disabled {
   justify-self: center;
 }
 
+.join-code-panel.next-game-panel {
+  transform: translateY(-80px);
+}
+
 .join-code-panel strong {
   color: #3a332d;
   font-size: 16px;
