@@ -2054,6 +2054,54 @@ function scheduleGameOverReset(state) {
   showResetCountdown(GAME_OVER_RESET_DELAY_MS, "Next game starting");
 }
 
+const MOVE_TIMEOUT_MS = 30000;
+let moveTimeoutTimer = null;
+let moveTimeoutKey = null;
+
+function clearMoveTimeout() {
+  if (moveTimeoutTimer) {
+    window.clearTimeout(moveTimeoutTimer);
+    moveTimeoutTimer = null;
+  }
+  if (moveTimeoutKey !== null) {
+    moveTimeoutKey = null;
+    hideResetCountdown();
+  }
+}
+
+function scheduleMoveTimeout(state) {
+  const waitingForMoves = state?.status === "battle"
+    && !state.showTutorial
+    && !allAlivePlayersHaveMoves(state);
+
+  if (!waitingForMoves) {
+    clearMoveTimeout();
+    return;
+  }
+
+  const turnKey = `${Number(state.levelIndex || 0)}:${Number(state.turn || 1)}`;
+  const timerKey = `${state.gameId || ""}:${turnKey}`;
+  if (timerKey === moveTimeoutKey) {
+    return; // this turn's countdown is already running
+  }
+
+  clearMoveTimeout();
+  moveTimeoutKey = timerKey;
+
+  // Tell the phones when this turn started so they can show the same countdown.
+  update(sessionRef, { moveTurnKey: turnKey, moveTurnStartedAt: serverTimestamp() })
+    .catch((error) => console.error("Could not write move timer", error));
+
+  moveTimeoutTimer = window.setTimeout(() => {
+    moveTimeoutTimer = null;
+    moveTimeoutKey = null;
+    hideResetCountdown();
+    rotateToNewSession().catch((error) => console.error("Could not reset after move timeout", error));
+  }, MOVE_TIMEOUT_MS);
+
+  showResetCountdown(MOVE_TIMEOUT_MS, "Pick your move or the game resets");
+}
+
 // ---------------------------------------------------------------------------
 // Kiosk-owned game flow.
 // Phones only write their own lobby entry, their own move and their tutorial tick.
@@ -2536,6 +2584,12 @@ async function activateSession(nextGameId, createNew) {
       scheduleAbandonedSessionReset(state);
     } catch (error) {
       console.error("scheduleAbandonedSessionReset() failed", error);
+    }
+
+    try {
+      scheduleMoveTimeout(state);
+    } catch (error) {
+      console.error("scheduleMoveTimeout() failed", error);
     }
 
     resolveTutorialAcknowledgement(state).catch((error) => {
