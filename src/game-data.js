@@ -19,9 +19,10 @@ function sortedList(obj) {
 
 function applyGameData(remote) {
   const moves = {};
-  const addMoves = (movesObj) => {
+  const addMoves = (movesObj, prefix = "") => {
     sortedList(movesObj).forEach(({ order, ...move }) => {
-      moves[move.id] = move;
+      const id = `${prefix}${move.id}`;
+      moves[id] = { ...move, id };
     });
   };
 
@@ -30,15 +31,16 @@ function applyGameData(remote) {
     return { ...character, moves: sortedList(characterMoves).map((move) => move.id) };
   });
 
-  const buildLevels = (levelsObj) =>
-    Object.values(levelsObj || {}).map(({ moves: levelMoves, ...level }) => {
-      addMoves(levelMoves);
-      return { ...level, moves: sortedList(levelMoves).map((move) => move.id) };
+  const buildLevels = (levelsObj, mode) =>
+    Object.entries(levelsObj || {}).map(([levelKey, { moves: levelMoves, ...level }]) => {
+      const prefix = `${mode}:${levelKey}:`;
+      addMoves(levelMoves, prefix);
+      return { ...level, moves: sortedList(levelMoves).map((move) => `${prefix}${move.id}`) };
     });
 
   const levels = {
-    solo: buildLevels(remote?.game?.solo),
-    multiplayer: buildLevels(remote?.game?.multiplayer)
+    solo: buildLevels(remote?.game?.solo, "solo"),
+    multiplayer: buildLevels(remote?.game?.multiplayer, "multiplayer")
   };
 
   if (!characters.length || !levels.solo.length || !levels.multiplayer.length) {

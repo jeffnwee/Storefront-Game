@@ -486,6 +486,10 @@ button:disabled {
   transform: translateY(-80px);
 }
 
+.join-code-panel.lobby-join-panel {
+  transform: translateY(-80px);
+}
+
 .join-code-panel strong {
   color: #3a332d;
   font-size: 16px;

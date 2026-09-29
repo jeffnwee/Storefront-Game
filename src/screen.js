@@ -2102,6 +2102,59 @@ function scheduleMoveTimeout(state) {
   showResetCountdown(MOVE_TIMEOUT_MS, "Pick your move or the game resets");
 }
 
+const CHARACTER_TIMEOUT_MS = 45000;
+let characterTimeoutTimer = null;
+let characterTimeoutKey = null;
+
+function stopCharacterTimeout() {
+  if (characterTimeoutTimer) {
+    window.clearTimeout(characterTimeoutTimer);
+    characterTimeoutTimer = null;
+  }
+  if (characterTimeoutKey !== null) {
+    characterTimeoutKey = null;
+    hideResetCountdown();
+  }
+}
+
+function scheduleCharacterTimeout(state) {
+  const entries = getLobbyEntries(state);
+  const expectedCount = state?.mode === "multiplayer" ? 2 : 1;
+  const confirmedCount = entries.filter((entry) => entry.confirmed && entry.characterId).length;
+  const waitingForCharacters = state?.status === "character-select" && confirmedCount < expectedCount;
+
+  if (!waitingForCharacters) {
+    stopCharacterTimeout();
+    // Clear the old start time so a later character select doesn't show a stale countdown.
+    if (state?.characterSelectStartedAt) {
+      update(sessionRef, { characterSelectStartedAt: null })
+        .catch((error) => console.error("Could not clear character timer", error));
+    }
+    return;
+  }
+
+  const timerKey = `${state.gameId || ""}:character-select:${entries.length}`;
+  if (timerKey === characterTimeoutKey) {
+    return; // countdown already running
+  }
+
+  stopCharacterTimeout();
+  characterTimeoutKey = timerKey;
+
+  // Tell the phones when character select started so they can show the same countdown.
+  update(sessionRef, { characterSelectStartedAt: serverTimestamp() })
+    .catch((error) => console.error("Could not write character timer", error));
+
+  characterTimeoutTimer = window.setTimeout(() => {
+    characterTimeoutTimer = null;
+    characterTimeoutKey = null;
+    hideResetCountdown();
+    rotateToNewSession().catch((error) => console.error("Could not reset after character timeout", error));
+  }, CHARACTER_TIMEOUT_MS);
+
+  showResetCountdown(CHARACTER_TIMEOUT_MS, "Pick your character or the game resets");
+}
+
 // ---------------------------------------------------------------------------
 // Kiosk-owned game flow.
 // Phones only write their own lobby entry, their own move and their tutorial tick.
@@ -2590,6 +2643,12 @@ async function activateSession(nextGameId, createNew) {
       scheduleMoveTimeout(state);
     } catch (error) {
       console.error("scheduleMoveTimeout() failed", error);
+    }
+
+    try {
+      scheduleCharacterTimeout(state);
+    } catch (error) {
+      console.error("scheduleCharacterTimeout() failed", error);
     }
 
     resolveTutorialAcknowledgement(state).catch((error) => {
