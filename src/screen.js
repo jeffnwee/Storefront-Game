@@ -2120,6 +2120,121 @@ function scheduleMoveTimeout(state) {
   showResetCountdown(MOVE_TIMEOUT_MS, "Pick your move or the game resets");
 }
 
+const TUTORIAL_TIMEOUT_MS = 30000;
+const LOBBY_WAIT_TIMEOUT_MS = 30000;
+let tutorialTimeoutTimer = null;
+let tutorialTimeoutKey = null;
+let lobbyWaitTimer = null;
+let lobbyWaitKey = null;
+let tutorialEndAt = 0;
+let lobbyWaitEndAt = 0;
+const TUTORIAL_LABEL = "Press Got It or the game resets";
+const LOBBY_WAIT_LABEL = "Waiting for a 2nd player or Start.";
+
+// Other timers hide the shared banner when they clear, and they can run after us in the same
+// update. So we only hide it if it is still showing OUR label, and we put it back if it vanished.
+function hideOwnBanner(label) {
+  if (elements.resetCountdownLabel?.textContent === label) {
+    hideResetCountdown();
+  }
+}
+
+function restoreBanner(endAt, label) {
+  const remainingMs = endAt - Date.now();
+  if (elements.resetCountdownBanner?.hidden && remainingMs > 0) {
+    showResetCountdown(remainingMs, label);
+  }
+}
+
+function clearTutorialTimeout() {
+  if (tutorialTimeoutTimer) {
+    window.clearTimeout(tutorialTimeoutTimer);
+    tutorialTimeoutTimer = null;
+  }
+  if (tutorialTimeoutKey !== null) {
+    tutorialTimeoutKey = null;
+    hideOwnBanner(TUTORIAL_LABEL);
+  }
+}
+
+// Instructions are showing and someone hasn't pressed "Got It": reset after 30s.
+function scheduleTutorialTimeout(state) {
+  if (state?.status !== "battle" || !state.showTutorial) {
+    clearTutorialTimeout();
+    return;
+  }
+
+  const key = `${state.gameId || ""}:${Number(state.levelIndex || 0)}:${Number(state.turn || 1)}:tutorial`;
+  if (key === tutorialTimeoutKey) {
+    restoreBanner(tutorialEndAt, TUTORIAL_LABEL);
+    return; // countdown already running
+  }
+
+  clearTutorialTimeout();
+  tutorialTimeoutKey = key;
+
+  // Tell the phones when the instructions started so they can show the same countdown.
+  update(sessionRef, { tutorialKey: `${Number(state.levelIndex || 0)}:${Number(state.turn || 1)}`, tutorialStartedAt: serverTimestamp() })
+    .catch((error) => console.error("Could not write tutorial timer", error));
+
+  tutorialTimeoutTimer = window.setTimeout(() => {
+    tutorialTimeoutTimer = null;
+    tutorialTimeoutKey = null;
+    hideResetCountdown();
+    rotateToNewSession().catch((error) => console.error("Could not reset after tutorial timeout", error));
+  }, TUTORIAL_TIMEOUT_MS);
+
+  tutorialEndAt = Date.now() + TUTORIAL_TIMEOUT_MS;
+  showResetCountdown(TUTORIAL_TIMEOUT_MS, TUTORIAL_LABEL);
+}
+
+function clearLobbyWaitTimeout() {
+  if (lobbyWaitTimer) {
+    window.clearTimeout(lobbyWaitTimer);
+    lobbyWaitTimer = null;
+  }
+  if (lobbyWaitKey !== null) {
+    lobbyWaitKey = null;
+    hideOwnBanner(LOBBY_WAIT_LABEL);
+  }
+}
+
+// One player is in the lobby, waiting for a 2nd player or for Start (solo): reset after 30s.
+function scheduleLobbyWaitTimeout(state) {
+  const entries = getLobbyEntries(state);
+  const waiting = state?.status === "lobby"
+    && entries.length === 1
+    && entries[0].soloRequested !== true;
+
+  if (!waiting) {
+    clearLobbyWaitTimeout();
+    return;
+  }
+
+  const key = `${state.gameId || ""}:lobby-wait:${entries[0].id}`;
+  if (key === lobbyWaitKey) {
+    restoreBanner(lobbyWaitEndAt, LOBBY_WAIT_LABEL);
+    return; // countdown already running
+  }
+
+  clearLobbyWaitTimeout();
+  lobbyWaitKey = key;
+
+  // Tell the phones when the lobby wait started so they can show the same countdown.
+  update(sessionRef, { lobbyWaitEntryId: entries[0].id, lobbyWaitStartedAt: serverTimestamp() })
+    .catch((error) => console.error("Could not write lobby wait timer", error));
+
+  lobbyWaitTimer = window.setTimeout(() => {
+    lobbyWaitTimer = null;
+    lobbyWaitKey = null;
+    hideResetCountdown();
+    rotateToNewSession().catch((error) => console.error("Could not reset after lobby wait timeout", error));
+  }, LOBBY_WAIT_TIMEOUT_MS);
+
+  lobbyWaitEndAt = Date.now() + LOBBY_WAIT_TIMEOUT_MS;
+  showResetCountdown(LOBBY_WAIT_TIMEOUT_MS, LOBBY_WAIT_LABEL);
+}
+
 const CHARACTER_TIMEOUT_MS = 45000;
 const EMPTY_LOBBY_RESET_MS = 5000;
 let characterTimeoutTimer = null;
@@ -2692,6 +2807,20 @@ async function activateSession(nextGameId, createNew) {
       scheduleCharacterTimeout(state);
     } catch (error) {
       console.error("scheduleCharacterTimeout() failed", error);
+    }
+
+    // Keep these last: the older timers above can hide the shared banner in the same update,
+    // and these two put theirs back.
+    try {
+      scheduleTutorialTimeout(state);
+    } catch (error) {
+      console.error("scheduleTutorialTimeout() failed", error);
+    }
+
+    try {
+      scheduleLobbyWaitTimeout(state);
+    } catch (error) {
+      console.error("scheduleLobbyWaitTimeout() failed", error);
     }
 
     resolveTutorialAcknowledgement(state).catch((error) => {
