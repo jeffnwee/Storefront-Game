@@ -1740,7 +1740,7 @@ function renderGameOver(state) {
   elements.winnerText.textContent = playersWon ? "Players win!" : "Monster wins";
   elements.gameOverMessage.textContent = playersWon
     ? `The curry party cleared all ${getLevelCount(state.mode || "solo")} levels. A fresh code will appear for the next battle.`
-    : "The monster held the screen. A fresh code will appear for the next battle.";
+    : "The monster held the screen. A fresh code will appear for the next battle. Let the next player take on the challenge.";
   if (elements.voucherQrPanel) {
     elements.voucherQrPanel.hidden = !playersWon;
   }
