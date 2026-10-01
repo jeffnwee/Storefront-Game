@@ -45,7 +45,7 @@ const IDLE_BACKGROUND_VERSION = "20260724-idle-perf2";
 const PLAYER_ART_VERSION = "20260803-player-art-perf1";
 const PLAYER_LOOK_UP_DELAY_MS = 1800;
 const LIVE_MOVE_ANIMATION_SPACING_MS = 940;
-const WEBSITE_URL = "https://tayyiting1219.github.io/Monster-Curry-World/#battle";
+const WEBSITE_URL = "https://tayyiting1219.github.io/Monster-Curry-World/";
 const IDLE_IMPACT_WORDS = ["BAM!", "SIZZLE!", "CRUNCH!", "POW!", "SLASH!", "BOOM!"];
 
 const $ = (id) => document.getElementById(id);
