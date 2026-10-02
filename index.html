@@ -8,9 +8,9 @@
   <link rel="icon" type="image/png" href="assets/mc_red_logo.png">
   <link rel="preload" href="./assets/backgrounds/curry-goblin.webp?v=20260724-idle-perf2" as="image" type="image/webp"
     fetchpriority="high">
-  <link rel="stylesheet" href="./styles.css?v=20260812-alpha-perf2">
+  <link rel="stylesheet" href="./styles.css?v=20261002-coopsame1">
   <script async src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-  <script type="module" src="./src/screen.js?v=20260814-fast-reset1"></script>
+  <script type="module" src="./src/screen.js?v=20261002-fxanchor1"></script>
 </head>
 
 <body class="screen-page">
@@ -95,10 +95,15 @@
     </section>
 
     <section id="battleView" class="display-view battle-view" hidden>
-      <video id="battleBackgroundVideo" class="battle-background-video is-active" muted playsinline loop
-        preload="metadata" aria-hidden="true">
-        <source src="./assets/battle-background.mp4?v=20260722-perf1" type="video/mp4">
-      </video>
+      <div class="battle-arena" aria-hidden="true">
+        <div class="arena-sky"></div>
+        <div class="arena-beam arena-beam-left"></div>
+        <div class="arena-beam arena-beam-right"></div>
+        <div class="arena-stands"></div>
+        <div class="arena-rail"></div>
+        <div class="arena-floor"><div class="arena-floor-plane"></div></div>
+        <div class="arena-vignette"></div>
+      </div>
       <div class="battle-background-scrim" aria-hidden="true"></div>
       <div class="live-battle-fx" aria-live="polite" aria-atomic="true">
         <video id="moveAnimation" class="attack-animation move-animation" muted playsinline preload="none"
@@ -122,6 +127,8 @@
           </div>
         </header>
 
+        <p id="battleStatus" class="battle-instruction">Now pick your move on your phone!</p>
+
         <div class="battle-layout">
           <section class="party-stack" aria-label="Players">
             <div id="playerCards" class="player-cards"></div>
@@ -129,25 +136,26 @@
 
           <section class="monster-zone" aria-label="Monster">
             <article id="monsterCard" class="combat-card monster-card">
-              <div class="combat-label">
-                <span>Monster</span>
-                <strong id="monsterName">Monster</strong>
-              </div>
-              <div class="hp-row">
-                <span>HP</span>
-                <div class="hp-track">
-                  <div id="monsterHpBar" class="hp-fill"></div>
-                  <strong id="monsterHpText" class="hp-value">0/0</strong>
+              <div class="fighter-info">
+                <div class="combat-label">
+                  <span>Monster</span>
+                  <strong id="monsterName">Monster</strong>
                 </div>
+                <div class="hp-row">
+                  <span>HP</span>
+                  <div class="hp-track">
+                    <div id="monsterHpBar" class="hp-fill"></div>
+                    <strong id="monsterHpText" class="hp-value">0/0</strong>
+                  </div>
+                </div>
+                <div id="monsterEffects" class="effect-line"></div>
               </div>
               <img id="monsterArt" class="combat-art monster-art" alt="Monster" decoding="async">
-              <div id="monsterEffects" class="effect-line"></div>
             </article>
           </section>
         </div>
 
         <section class="screen-message">
-          <p id="battleStatus">Now pick your move on your phone!</p>
           <div id="lastMoves" class="last-moves"></div>
           <div id="battleLog" class="battle-log"></div>
         </section>
@@ -161,18 +169,23 @@
 
     <div id="tutorialOverlay" class="tutorial-overlay" hidden>
       <div class="tutorial-card">
-        <span class="eyebrow">Quick Tip</span>
+        <div class="tutorial-objective">
+          <span class="tutorial-objective-label">Objective</span>
+          <strong id="tutorialObjectiveText" class="tutorial-objective-text">Defeat the monster</strong>
+        </div>
         <h2>How to Play</h2>
         <ol class="tutorial-steps">
-          <li><span class="tutorial-step-number">1</span><span>Pick a move on your phone</span></li>
-          <li><span class="tutorial-step-number">2</span><span>Everyone's move locks in together</span></li>
-          <li><span class="tutorial-step-number">3</span><span>Watch it play out on the big screen!</span></li>
+          <li><span class="tutorial-step-number">1</span><span>Each turn, pick 1 move on your phone</span></li>
+          <li><span class="tutorial-step-number">2</span><span>Once everyone has picked, your moves hit the monster together</span></li>
+          <li><span class="tutorial-step-number">3</span><span>Then the monster strikes back!</span></li>
+          <li><span class="tutorial-step-number">4</span><span>Repeat until its HP hits 0. Don't get knocked out first!</span></li>
         </ol>
         <p id="tutorialWaitingText" class="tutorial-waiting"></p>
       </div>
     </div>
 
     <section id="gameOverView" class="display-view game-over-view" hidden>
+      <div id="confettiLayer" class="confetti-layer" aria-hidden="true"></div>
       <div class="portrait-shell game-over-shell">
         <div class="brand-bar">
           <strong>MONSTER CURRY</strong>
@@ -185,7 +198,7 @@
         </div>
         <aside id="voucherQrPanel" class="join-code-panel compact voucher-qr-panel" aria-label="Redeem voucher" hidden>
           <strong>You won!</strong>
-          <p class="voucher-countdown-text">Check your phone and tap "Redeem Vouchers" to claim your reward.</p>
+          <p class="voucher-countdown-text">Check your phone to claim your reward</p>
         </aside>
         <aside class="join-code-panel compact next-game-panel" aria-label="Next game code">
           <strong>Next game</strong>
@@ -193,6 +206,25 @@
         </aside>
       </div>
     </section>
+
+    <div id="vsIntro" class="vs-intro" hidden aria-hidden="true">
+      <div class="vs-shake">
+        <div class="vs-card vs-card-player"></div>
+        <div class="vs-card vs-card-monster"></div>
+        <div class="vs-glow"></div>
+        <div class="vs-edge vs-edge-player"></div>
+        <div class="vs-edge vs-edge-monster"></div>
+        <div class="vs-slash"></div>
+        <span id="vsLevel" class="vs-level">Level 1</span>
+        <div id="vsTeam" class="vs-team"></div>
+        <img id="vsMonsterArt" class="vs-monster-art" alt="">
+        <div class="vs-banner vs-banner-player"><span id="vsPlayerKicker">Player</span><strong id="vsPlayerName">Player</strong></div>
+        <div class="vs-banner vs-banner-monster"><span>Monster</span><strong id="vsMonsterName">Monster</strong><small id="vsMonsterHp">HP</small></div>
+        <span class="vs-vs">VS</span>
+        <strong class="vs-fight">FIGHT!</strong>
+      </div>
+      <div class="vs-flash"></div>
+    </div>
 
     <div id="resetCountdownBanner" class="reset-countdown-banner" hidden role="status" aria-live="polite">
       <span id="resetCountdownLabel" class="reset-countdown-label"></span>

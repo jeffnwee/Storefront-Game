@@ -140,6 +140,7 @@ button:disabled {
 
 .idle-call-to-action {
   position: relative;
+  top: -40px; /* nudged up */
   z-index: 4;
   width: 100%;
   text-align: center;
@@ -173,6 +174,7 @@ button:disabled {
 
 .idle-battle-stage {
   position: relative;
+  top: -40px; /* nudged up with the header text */
   align-self: center;
   width: 100%;
   height: 610px;
@@ -233,28 +235,51 @@ button:disabled {
 }
 
 .idle-impact-wrap {
-  position: relative;
-  z-index: 4;
+  position: static;
   align-self: center;
   display: grid;
   place-items: center;
 }
 
 .idle-versus {
-  position: relative;
-  top: -82px;
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border: 3px solid #fff;
-  border-radius: 50%;
-  background: var(--red);
+  position: absolute;
+  left: 50%;
+  top: 334px;
+  z-index: 4;
+  translate: -50% -50%;
+  display: block;
+  width: auto;
+  height: auto;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 0;
+  background: none;
   color: #fff;
-  font-size: 22px;
+  font-family: Impact, "Arial Black", "Haettenschweiler", sans-serif;
+  font-size: 150px;
+  font-style: italic;
   font-weight: 1000;
+  line-height: 1;
+  letter-spacing: -4px;
+  white-space: nowrap;
+  -webkit-text-stroke: 12px var(--red);
+  paint-order: stroke fill;
   transform: rotate(-8deg);
-  box-shadow: 0 10px 28px rgba(237, 29, 36, 0.52);
+  filter:
+    drop-shadow(6px 7px 0 #111)
+    drop-shadow(0 0 18px rgba(237, 29, 36, 0.95));
+  animation: idle-vs-slam 1.6s cubic-bezier(0.3, 1.6, 0.5, 1) infinite;
+}
+
+@keyframes idle-vs-slam {
+  0% { scale: 1; }
+  10% { scale: 1.25; }
+  18% { scale: 0.95; }
+  26%, 100% { scale: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-versus { animation: none; }
 }
 
 .idle-player-fighter.is-attacking {
@@ -311,14 +336,14 @@ button:disabled {
 
 @keyframes idle-player-attack {
   0%, 100% { transform: translateX(0) rotate(0); }
-  42% { transform: translateX(48px) rotate(4deg) scale(1.06); }
-  62% { transform: translateX(38px) rotate(-2deg) scale(1.03); }
+  42% { transform: translate(52px, 46px) rotate(4deg) scale(1.06); }
+  62% { transform: translate(40px, 36px) rotate(-2deg) scale(1.03); }
 }
 
 @keyframes idle-monster-attack {
   0%, 100% { transform: translateX(0) rotate(0); }
-  42% { transform: translateX(-48px) rotate(-4deg) scale(1.06); }
-  62% { transform: translateX(-38px) rotate(2deg) scale(1.03); }
+  42% { transform: translate(-52px, -46px) rotate(-4deg) scale(1.06); }
+  62% { transform: translate(-40px, -36px) rotate(2deg) scale(1.03); }
 }
 
 @keyframes idle-hit {
@@ -1011,8 +1036,11 @@ button:disabled {
 }
 
 .reset-countdown-banner {
+  /* Distance from the bottom of the 577x1439 screen. Raise this number to move
+     every countdown (lobby, tutorial, reset) further up the tall LED panel. */
+  --countdown-bottom: 340px;
   position: fixed;
-  bottom: 16px;
+  bottom: var(--countdown-bottom);
   left: 50%;
   transform: translateX(-50%);
   z-index: 25;
@@ -1489,6 +1517,32 @@ button:disabled {
   line-height: 0.98;
 }
 
+.tutorial-objective {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(237, 29, 36, 0.95), rgba(245, 173, 15, 0.95));
+  box-shadow: 0 10px 26px rgba(237, 29, 36, 0.35);
+}
+
+.tutorial-objective-label {
+  color: #fff7e8;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tutorial-objective-text {
+  color: #fff;
+  font-size: 30px;
+  font-weight: 1000;
+  line-height: 1.05;
+}
+
 .tutorial-steps {
   display: grid;
   gap: 14px;
@@ -1543,4 +1597,1382 @@ button:disabled {
   font-size: 14.72px;
   font-weight: 600;
   line-height: 1.3;
+}
+
+/* ===== Diagonal face-off layout ===== */
+/* Player: top-left, further back. Monster: bottom-right, closer to camera.
+   translate/scale are separate properties, so they stack with the existing
+   transform-based attack / hit animations. */
+.idle-player-fighter {
+  translate: 4px -90px; /* was 0 -72px: pushed away from the slash line */
+  scale: 1.22; /* was 0.98; same size as the monster */
+  z-index: 1;
+}
+
+.idle-monster-fighter {
+  translate: 8px 102px; /* was 0 78px: pushed away from the slash line */
+  scale: 1.22; /* was 1.1 */
+  z-index: 2;
+}
+
+
+/* ===== Diagonal slash through the VS ===== */
+/* Sharp slash line, bottom-left to top-right, splitting the two fighters */
+.idle-battle-arena::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 334px;
+  z-index: 3; /* in front of the fighters (1-2), behind the VS (4) */
+  width: 105%;
+  height: 20px;
+  pointer-events: none;
+  translate: -50% -50%;
+  rotate: -30deg;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), #fff 30%, #fff 70%, rgba(255, 255, 255, 0.15));
+  clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 100%);
+  animation: idle-slash-flash 1.6s ease-out infinite;
+}
+
+/* Soft red glow along the slash */
+.idle-battle-arena::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 334px;
+  z-index: 0;
+  width: 105%;
+  height: 34px;
+  pointer-events: none;
+  translate: -50% -50%;
+  rotate: -30deg;
+  background: linear-gradient(90deg, transparent, rgba(237, 29, 36, 0.9) 25%, rgba(237, 29, 36, 0.9) 75%, transparent);
+  filter: blur(12px);
+  animation: idle-slash-flash 1.6s ease-out infinite;
+}
+
+@keyframes idle-slash-flash {
+  0% { opacity: 0.7; }
+  10% { opacity: 1; }
+  40%, 100% { opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-battle-arena::before,
+  .idle-battle-arena::after { animation: none; }
+}
+
+/* ===== Battle intro cutscene (VS opening) ===== */
+/* Same look as the attract page: dark scene, red glow, white slash at -30deg, Inter 1000 caps,
+   gold kickers, red rounded bars, and the Impact VS with the red outline. 5 second timeline. */
+.vs-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(237, 29, 36, 0.3), transparent 62%),
+    linear-gradient(180deg, #08080b, #1b0a0b 50%, #08080b);
+}
+
+.vs-intro[hidden] {
+  display: none;
+}
+
+.vs-intro.is-playing {
+  animation: vs-exit 0.3s ease-in 4.7s forwards;
+}
+
+.vs-shake,
+.vs-flash {
+  position: absolute;
+  inset: 0;
+}
+
+.vs-glow,
+.vs-slash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  rotate: -30deg;
+  pointer-events: none;
+}
+
+.vs-glow {
+  width: 125%;
+  height: 40px;
+  background: linear-gradient(90deg, transparent, rgba(237, 29, 36, 0.9) 25%, rgba(237, 29, 36, 0.9) 75%, transparent);
+  filter: blur(18px);
+  opacity: 0;
+}
+
+.vs-slash {
+  z-index: 0; /* behind both fighters so the monster isn't cut by the line */
+  width: 125%;
+  height: 20px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), #fff 30%, #fff 70%, rgba(255, 255, 255, 0.15));
+  clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 100%);
+  scale: 0 1;
+}
+
+/* Split cards: two black cards divided along the same -30deg line as the slash.
+   Every piece is a long strip anchored on that line and rotated about it, so the split
+   always lines up with the slash. Paint order (set in index.html): cards, red glow,
+   accent edges, white slash. The edges sit just outside the 20px slash. */
+.vs-card,
+.vs-edge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1600px;
+  margin-left: -800px;
+  rotate: -30deg;
+  pointer-events: none;
+}
+
+.vs-card {
+  height: 900px;
+  background: #0a0a0c;
+}
+
+.vs-card-player {
+  margin-top: -900px;
+  transform-origin: 800px 900px;
+}
+
+.vs-card-monster {
+  margin-top: 0;
+  transform-origin: 800px 0;
+}
+
+.vs-edge {
+  height: 8px;
+}
+
+.vs-edge-player {
+  margin-top: -18px;
+  transform-origin: 800px 18px;
+  background: var(--vs-player-accent, var(--gold));
+}
+
+.vs-edge-monster {
+  margin-top: 10px;
+  transform-origin: 800px -10px;
+  background: var(--vs-monster-accent, var(--red));
+}
+
+.vs-level {
+  position: absolute;
+  top: 34px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: 1000;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.72);
+  opacity: 0;
+}
+
+/* Player: top-left, further back. Monster: bottom-right, bigger and in front (same as the attract page). */
+.vs-team {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: 190px;
+  width: 100%;
+  height: 480px;
+  padding-left: 6px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.vs-team img {
+  height: 100%;
+  max-width: 68%;
+  object-fit: contain;
+  object-position: left bottom;
+  filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.44));
+}
+
+.vs-team[data-size="2"] img,
+.vs-team[data-size="3"] img,
+.vs-team[data-size="4"] img {
+  height: 76%;
+  max-width: 50%;
+  margin-right: -30px;
+}
+
+/* Co-op: keep the team high so it stays clear of the slash. */
+.vs-team[data-size="2"],
+.vs-team[data-size="3"],
+.vs-team[data-size="4"] {
+  align-items: flex-start;
+}
+
+.vs-monster-art {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 210px; /* low and to the right so it sits fully below the slash */
+  height: 460px;
+  max-width: 82%;
+  object-fit: contain;
+  object-position: right bottom;
+  filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.5));
+}
+
+/* Name blocks: no box. JS (setVsName) splits each name into letters; they slam in one at a time,
+   a bar slashes under the name, then a wave of lifts runs through it. Same look as the VS:
+   Impact italic, white fill, thick outline in the fighter's colour, hard dark drop shadow. */
+.vs-banner {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  max-width: 520px;
+  color: #fff;
+}
+
+.vs-banner > span {
+  color: var(--gold);
+  font-size: 15px;
+  font-weight: 1000;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.vs-banner strong {
+  font-family: Impact, "Arial Black", "Haettenschweiler", sans-serif;
+  font-style: italic;
+  font-size: 56px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #fff;
+  -webkit-text-stroke: 9px var(--name-accent, var(--red));
+  paint-order: stroke fill;
+  filter: drop-shadow(4px 5px 0 #111);
+}
+
+.vs-banner strong::after {
+  content: "";
+  display: block;
+  height: 7px;
+  margin-top: 6px;
+  background: var(--name-accent, var(--red));
+  transform: skewX(-24deg);
+}
+
+.vs-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.vs-letter {
+  display: inline-block;
+}
+
+.vs-banner small {
+  color: #fff7e8;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.vs-banner-player {
+  right: 48px;
+  top: 176px;
+  text-align: right;
+  --name-accent: var(--vs-player-accent, var(--gold));
+  --name-start: 1.5s;
+  --wave-start: 2.9s;
+}
+
+/* Co-op: the team name can wrap to two lines, so keep it high, clear of the team's heads. */
+.vs-intro.is-team .vs-banner-player {
+  top: 82px;
+}
+
+.vs-banner-player > span {
+  color: #fff7e8;
+}
+
+.vs-banner-player strong::after {
+  transform-origin: 100% 50%;
+}
+
+.vs-banner-monster {
+  left: 44px;
+  bottom: 96px;
+  text-align: left;
+  --name-accent: var(--vs-monster-accent, var(--red));
+  --name-start: 1.7s;
+  --wave-start: 3.05s;
+}
+
+.vs-banner-monster strong::after {
+  transform-origin: 0 50%;
+}
+
+.vs-vs,
+.vs-fight {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 6;
+  translate: -50% -50%;
+  display: block;
+  padding: 0 8px;
+  color: #fff;
+  font-family: Impact, "Arial Black", "Haettenschweiler", sans-serif;
+  font-style: italic;
+  font-weight: 1000;
+  line-height: 1;
+  white-space: nowrap;
+  -webkit-text-stroke: 12px var(--red);
+  paint-order: stroke fill;
+  rotate: -8deg;
+  filter:
+    drop-shadow(6px 7px 0 #111)
+    drop-shadow(0 0 18px rgba(237, 29, 36, 0.95));
+  opacity: 0;
+}
+
+.vs-vs {
+  font-size: 200px;
+  letter-spacing: -4px;
+}
+
+.vs-fight {
+  font-size: 138px;
+  letter-spacing: -3px;
+}
+
+.vs-flash {
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 7;
+}
+
+/* Timeline (seconds): cards .0/.12, glow+slash .3, fighters .4/.6, banners 1.5/1.7, VS slam 2.4,
+   VS out 3.6, FIGHT! 3.7, everything exits 4.3-4.7, fade 4.7-5.0 */
+.vs-intro.is-playing .vs-card-player,
+.vs-intro.is-playing .vs-edge-player {
+  animation: vs-card-in-player 0.45s cubic-bezier(0.2, 1, 0.3, 1) 0s both, vs-card-out-player 0.4s ease-in 4.3s forwards;
+}
+.vs-intro.is-playing .vs-card-monster,
+.vs-intro.is-playing .vs-edge-monster {
+  animation: vs-card-in-monster 0.45s cubic-bezier(0.2, 1, 0.3, 1) 0.12s both, vs-card-out-monster 0.4s ease-in 4.3s forwards;
+}
+.vs-intro.is-playing .vs-shake { animation: vs-shake 0.55s linear 2.4s; }
+.vs-intro.is-playing .vs-glow { animation: vs-fade-in 0.5s ease-out 0.3s forwards; }
+.vs-intro.is-playing .vs-slash { animation: vs-slash-in 0.45s ease-out 0.3s forwards; }
+.vs-intro.is-playing .vs-level { animation: vs-fade-in 0.4s ease-out 0.5s forwards; }
+.vs-intro.is-playing .vs-team {
+  animation: vs-fighter-left 0.8s cubic-bezier(0.2, 1.2, 0.3, 1) 0.4s both, vs-fighter-out-left 0.4s ease-in 4.3s forwards;
+}
+.vs-intro.is-playing .vs-monster-art {
+  animation: vs-fighter-right 0.8s cubic-bezier(0.2, 1.2, 0.3, 1) 0.6s both, vs-fighter-out-right 0.4s ease-in 4.3s forwards;
+}
+.vs-intro.is-playing .vs-banner-player { animation: vs-fighter-out-right 0.4s ease-in 4.3s forwards; }
+.vs-intro.is-playing .vs-banner-monster { animation: vs-fighter-out-left 0.4s ease-in 4.3s forwards; }
+.vs-intro.is-playing .vs-banner > span { animation: vs-kicker-in 0.35s ease-out var(--name-start) both; }
+.vs-intro.is-playing .vs-banner small { animation: vs-kicker-in 0.35s ease-out calc(var(--name-start) + 0.8s) both; }
+.vs-intro.is-playing .vs-letter {
+  animation:
+    vs-letter-slam 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) calc(var(--name-start) + 0.1s + var(--i, 0) * 0.05s) both,
+    vs-letter-wave 0.45s ease-in-out calc(var(--wave-start) + var(--i, 0) * 0.04s);
+}
+.vs-intro.is-playing .vs-banner strong::after {
+  scale: 0 1;
+  animation: vs-name-bar 0.4s cubic-bezier(0.2, 1, 0.3, 1) calc(var(--name-start) + 0.9s) both;
+}
+.vs-intro.is-playing .vs-vs { animation: vs-slam-in 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 2.4s both, vs-vs-out 0.25s ease-in 3.6s forwards; }
+.vs-intro.is-playing .vs-fight { animation: vs-fight-pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 3.7s both; }
+.vs-intro.is-playing .vs-flash { animation: vs-flash 0.5s ease-out 2.4s; }
+
+/* Cards slide in/out along the line's perpendicular, from the top-left and bottom-right corners,
+   so their edges stay parallel to the slash the whole way. */
+@keyframes vs-card-in-player { from { translate: -420px -730px; } to { translate: 0 0; } }
+@keyframes vs-card-in-monster { from { translate: 420px 730px; } to { translate: 0 0; } }
+@keyframes vs-card-out-player { to { translate: -420px -730px; } }
+@keyframes vs-card-out-monster { to { translate: 420px 730px; } }
+@keyframes vs-slash-in { from { scale: 0 1; } to { scale: 1 1; } }
+@keyframes vs-fade-in { to { opacity: 1; } }
+@keyframes vs-fighter-left { from { translate: -700px 0; } to { translate: 0 0; } }
+@keyframes vs-fighter-right { from { translate: 700px 0; } to { translate: 0 0; } }
+@keyframes vs-fighter-out-left { to { translate: -800px 0; } }
+@keyframes vs-fighter-out-right { to { translate: 800px 0; } }
+@keyframes vs-letter-slam {
+  0% { opacity: 0; scale: 3.2; translate: 0 -60px; rotate: var(--r, -8deg); }
+  100% { opacity: 1; scale: 1; translate: 0 0; rotate: 0deg; }
+}
+@keyframes vs-letter-wave {
+  0%, 100% { translate: 0 0; scale: 1; filter: none; }
+  40% { translate: 0 -12px; scale: 1.2; filter: drop-shadow(0 0 12px var(--name-accent, var(--red))); }
+}
+@keyframes vs-name-bar { from { scale: 0 1; } to { scale: 1 1; } }
+@keyframes vs-kicker-in { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+@keyframes vs-slam-in {
+  from { opacity: 0; scale: 5; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes vs-vs-out { to { opacity: 0; scale: 1.5; } }
+@keyframes vs-fight-pop {
+  0% { opacity: 0; scale: 0.3; }
+  60% { opacity: 1; scale: 1.15; }
+  100% { opacity: 1; scale: 1; }
+}
+@keyframes vs-flash { from { opacity: 0.9; } to { opacity: 0; } }
+@keyframes vs-shake {
+  0%, 100% { translate: 0 0; }
+  15% { translate: -14px 8px; }
+  30% { translate: 12px -10px; }
+  45% { translate: -9px -6px; }
+  60% { translate: 8px 7px; }
+  80% { translate: -4px 3px; }
+}
+@keyframes vs-exit { to { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .vs-intro.is-playing .vs-shake { animation: none; }
+  .vs-intro.is-playing .vs-card,
+  .vs-intro.is-playing .vs-edge,
+  .vs-intro.is-playing .vs-letter,
+  .vs-intro.is-playing .vs-banner > span,
+  .vs-intro.is-playing .vs-banner small { animation: none; }
+  .vs-intro.is-playing .vs-banner strong::after { animation: none; scale: 1 1; }
+}
+
+/* ===== Win screen confetti ===== */
+.confetti-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -40px;
+  width: var(--w, 10px);
+  height: calc(var(--w, 10px) * 1.6);
+  border-radius: 2px;
+  opacity: 0.95;
+  will-change: transform;
+  animation: confetti-fall 4.5s linear infinite;
+}
+
+.confetti-piece.is-round {
+  height: var(--w, 10px);
+  border-radius: 50%;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  100% { transform: translate3d(var(--drift, 0px), 1520px, 0) rotate(var(--spin, 540deg)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece { animation-duration: 12s; }
+}
+
+/* Keep the win title and both party poppers on one line */
+.game-over-copy h1.is-win {
+  font-size: 48px;
+  white-space: nowrap;
+}
+
+
+/* ===== Battle cards: same style as the phone's character-select card =====
+   Warm gold-tinted rounded card, framed picture with a glow, title pill, name, green HP bar.
+   Layout is unchanged; only the look of the player and monster cards. */
+.combat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(245, 173, 15, 0.55);
+  border-bottom: 1px solid rgba(245, 173, 15, 0.55);
+  border-radius: 16px;
+  background:
+    linear-gradient(160deg, rgba(245, 173, 15, 0.16), rgba(255, 255, 255, 0.06)),
+    rgba(22, 10, 8, 0.78);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+  text-shadow: none;
+}
+
+.monster-card {
+  border-color: rgba(237, 29, 36, 0.75);
+  background:
+    linear-gradient(160deg, rgba(237, 29, 36, 0.2), rgba(255, 255, 255, 0.05)),
+    rgba(22, 10, 8, 0.8);
+}
+
+/* Framed picture */
+.combat-art,
+.player-card .combat-art {
+  order: 1;
+  scale: 1;
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+  height: 220px;
+  padding: 6px;
+  border: 3px solid var(--gold);
+  border-radius: 20px;
+  background: radial-gradient(circle at 50% 40%, rgba(245, 173, 15, 0.45), rgba(40, 14, 10, 0.9) 72%);
+  object-fit: contain;
+  filter: none;
+  box-sizing: border-box;
+}
+
+.monster-card .combat-art {
+  border-color: var(--red);
+  background: radial-gradient(circle at 50% 40%, rgba(237, 29, 36, 0.45), rgba(40, 14, 10, 0.9) 72%);
+}
+
+.player-cards .player-card:not(:only-child) .combat-art {
+  height: 170px;
+}
+
+/* Title pill + name */
+.combat-label {
+  order: 2;
+  gap: 6px;
+  justify-items: start;
+}
+
+.combat-label span {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(245, 173, 15, 0.2);
+  color: #ffd36b;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.monster-card .combat-label span {
+  background: rgba(237, 29, 36, 0.25);
+  color: #ffb4b6;
+}
+
+.combat-label strong {
+  font-size: 26px;
+  line-height: 1.04;
+}
+
+/* HP bar: "HP" label, rounded bar, green like the phone */
+.hp-row {
+  order: 3;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+.hp-track {
+  height: 24px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Colour is set per fighter from JS (applyHpFill): green when healthy, then
+   yellow -> orange -> red as HP drops. Same scale for players and the monster. */
+@property --hp-from {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #2f9e4f;
+}
+
+@property --hp-to {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #5fd36a;
+}
+
+.hp-fill {
+  background: linear-gradient(90deg, var(--hp-from), var(--hp-to));
+  transition: width 260ms ease, --hp-from 600ms ease, --hp-to 600ms ease;
+}
+
+.hp-value {
+  font-size: 14px;
+  -webkit-text-stroke: 3px rgba(0, 0, 0, 0.85);
+  paint-order: stroke fill;
+  text-shadow: none;
+}
+
+.effect-line {
+  order: 4;
+}
+
+.locked-move {
+  order: 5;
+}
+
+.effect-line:empty {
+  display: none;
+}
+a
+.effect-line,
+.locked-move {
+  min-height: 0;
+  text-shadow: none;
+}
+
+.locked-move {
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The cards are taller now, so the solo cards can shrink to fit their content */
+.monster-card,
+.player-card:only-child {
+  min-height: 0;
+  justify-content: flex-start;
+}
+/* ===== Player faces the monster (right) =====
+   The character art is drawn facing left, so mirror it on the attract screen and in the
+   VS intro. Uses the separate `scale` property so it stacks with the existing transform
+   animations (breathe, attack, victory, death) instead of overriding them. */
+.idle-player-fighter img {
+  scale: -1 1;
+}
+
+/* The attack clip is centred with transform: translate(-50%, -50%). The mirror has to go
+   AFTER that translate inside the same transform, otherwise the offset gets mirrored too
+   and the clip jumps one full width to the right. */
+.idle-player-fighter .idle-fighter-animation {
+  transform: translate(-50%, -50%) scaleX(-1);
+}
+
+.vs-team img {
+  scale: -1 1;
+  /* The mirror flips the picture inside its box, so anchor it right to keep it on the left. */
+  object-position: right bottom;
+}
+
+/* ===== Co-op VS colours =====
+   Each name part carries its own outline colour (set in screen.js setVsNameParts):
+   player 1's colour, black for "&", player 2's colour. In solo there is one part with no
+   colour of its own, so it keeps using --name-accent as before. */
+.vs-name-part {
+  -webkit-text-stroke-color: var(--part-accent, var(--name-accent, var(--red)));
+}
+
+/* Lines split half and half between the two players. In solo both variables hold the same
+   colour, so the lines look exactly as before. */
+.vs-banner-player strong::after {
+  background: linear-gradient(90deg,
+    var(--vs-player-accent, var(--gold)) 50%,
+    var(--vs-player-accent-2, var(--vs-player-accent, var(--gold))) 50%);
+}
+
+.vs-edge-player {
+  background: linear-gradient(90deg,
+    var(--vs-player-accent, var(--gold)) 50%,
+    var(--vs-player-accent-2, var(--vs-player-accent, var(--gold))) 50%);
+}
+
+/* ===== Battle arena background (CSS only, replaces the background video) =====
+   Night stadium: sky with spotlights, tiered crowd stands, an LED rail, and a stone
+   floor in perspective. Fighters stand on
+   glowing pads that follow the card columns, like a turn-based battle stage.
+   --arena-horizon = where the floor starts, from the top of the 1439px screen. */
+.battle-view {
+  --arena-horizon: 360px;
+  background-color: #0b0710;
+}
+
+.battle-background-video {
+  display: none;
+}
+
+.battle-background-scrim {
+  background: none;
+}
+
+.battle-arena {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.battle-arena > div {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+/* Sky: deep night with a warm red glow rising behind the stands */
+.arena-sky {
+  top: 0;
+  height: var(--arena-horizon);
+  background:
+    radial-gradient(ellipse 80% 45% at 50% 100%, rgba(237, 29, 36, 0.5), transparent 70%),
+    radial-gradient(ellipse 60% 25% at 50% 0%, rgba(245, 173, 15, 0.16), transparent 70%),
+    linear-gradient(180deg, #06050b 0%, #170b19 50%, #33101a 100%);
+}
+
+/* Soft spotlights from the top corners */
+.arena-beam {
+  top: -40px;
+  left: auto;
+  right: auto;
+  width: 170px;
+  height: 1100px;
+  background: linear-gradient(180deg, rgba(255, 238, 200, 0.16), rgba(255, 238, 200, 0.05) 45%, transparent 75%);
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  filter: blur(18px);
+  transform-origin: 50% 0;
+  mix-blend-mode: screen;
+  animation: arena-beam-sway 8s ease-in-out infinite alternate;
+}
+
+.arena-beam-left {
+  left: 10px;
+  rotate: -28deg;
+}
+
+.arena-beam-right {
+  right: 10px;
+  rotate: 28deg;
+  animation-delay: -4s;
+}
+
+@keyframes arena-beam-sway {
+  from { transform: rotate(-6deg); }
+  to { transform: rotate(6deg); }
+}
+
+/* Crowd stands: stepped tiers with rows of heads and a few coloured shirts / phone lights */
+.arena-stands {
+  top: calc(var(--arena-horizon) - 300px);
+  height: 274px;
+  background:
+    linear-gradient(180deg, rgba(6, 5, 11, 0.95), rgba(6, 5, 11, 0) 45%),
+    repeating-linear-gradient(180deg, transparent 0 30px, rgba(0, 0, 0, 0.6) 30px 34px),
+    radial-gradient(circle at 20px 12px, rgba(255, 245, 220, 0.9) 1.6px, transparent 2.2px) 0 0 / 61px 34px,
+    radial-gradient(circle at 7px 10px, #b8343a 4px, transparent 4.6px) 0 0 / 37px 34px,
+    radial-gradient(circle at 25px 11px, #d7922a 4px, transparent 4.6px) 0 0 / 53px 34px,
+    radial-gradient(circle at 7px 12px, #6e3a42 5px, transparent 5.6px) 0 0 / 15px 17px,
+    radial-gradient(circle at 14px 21px, #4d2634 5px, transparent 5.6px) 0 0 / 15px 17px,
+    linear-gradient(180deg, #2a121c, #45181d);
+}
+
+/* LED rail at the front of the stands */
+.arena-rail {
+  top: calc(var(--arena-horizon) - 26px);
+  height: 26px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 46px, rgba(0, 0, 0, 0.45) 46px 48px),
+    linear-gradient(90deg, #ed1d24, #f5ad0f 50%, #ed1d24);
+  box-shadow:
+    0 0 26px rgba(237, 29, 36, 0.8),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.45);
+  animation: arena-rail-pulse 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes arena-rail-pulse {
+  from { filter: brightness(0.85); }
+  to { filter: brightness(1.15); }
+}
+
+/* Floor: stone tiles on a plane tilted back in 3D, then the ring markings drawn on top
+   as flat ellipses (already in perspective) */
+.arena-floor {
+  top: var(--arena-horizon);
+  bottom: 0;
+  overflow: hidden;
+  perspective: 340px;
+  perspective-origin: 50% 0;
+  background: linear-gradient(180deg, #4a2a1a, #1a0e0a);
+}
+
+.arena-floor-plane {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2400px;
+  height: 2400px;
+  margin-left: -1200px;
+  transform-origin: 50% 0;
+  transform: rotateX(74deg);
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.32) 0 3px, transparent 3px 64px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.32) 0 3px, transparent 3px 64px),
+    radial-gradient(ellipse 60% 40% at 50% 18%, #8a5634, #5a331f 50%, #2a170f 90%);
+}
+
+/* Darken the edges so the cards and log stay readable */
+.arena-vignette {
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 75% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.6) 100%),
+    linear-gradient(180deg, transparent 75%, rgba(0, 0, 0, 0.4));
+}
+
+/* ===== Player cards in each player's own colour =====
+   screen.js sets --fighter-color on every player card from that character's colour in
+   Firebase. The older card style above hard-codes gold; this puts the player colour on the
+   card frame, the picture frame and the "Player 1/2" tag. The monster card stays red. */
+.player-card {
+  border-color: color-mix(in srgb, var(--fighter-color) 75%, transparent);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--fighter-color) 22%, transparent), rgba(255, 255, 255, 0.05)),
+    rgba(22, 10, 8, 0.8);
+}
+
+.player-card .combat-art,
+.player-cards .player-card .combat-art {
+  border-color: var(--fighter-color);
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--fighter-color) 50%, transparent), rgba(40, 14, 10, 0.9) 72%);
+}
+
+.player-card .combat-label span {
+  background: color-mix(in srgb, var(--fighter-color) 28%, transparent);
+  color: color-mix(in srgb, var(--fighter-color) 45%, #fff);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-beam,
+  .arena-rail { animation: none; }
+}
+
+/* ===== Arena layout: no cards, fighters stand on pads =====
+   Pokemon style diagonal (same as the VS intro): player(s) further back on the left,
+   monster closer and bigger on the right. Each fighter's name / HP / effects sit in an
+   info box beside them. The card frames are switched off; only the art and info remain. */
+.battle-layout {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 44px;
+  margin-top: 18px;
+}
+
+.party-stack,
+.player-cards {
+  gap: 14px;
+}
+
+.combat-card,
+.player-card,
+.monster-card {
+  position: relative;
+  display: grid;
+  align-items: end;
+  gap: 10px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* Player: art on the left, info box on the right */
+.player-card {
+  grid-template-columns: 270px minmax(0, 1fr);
+}
+
+.player-card:not(:only-child) {
+  grid-template-columns: 215px minmax(0, 1fr);
+}
+
+/* Co-op: second player steps forward a little, like a party line-up */
+.player-card:not(:only-child) + .player-card {
+  margin-left: 34px;
+}
+
+/* Monster: info box on the left, art on the right */
+.monster-card {
+  grid-template-columns: minmax(0, 1fr) 305px;
+}
+
+/* Free-standing art: no frame, feet at the bottom so they stand on the pad */
+.combat-art,
+.player-card .combat-art,
+.player-cards .player-card .combat-art,
+.monster-card .combat-art,
+.player-cards .player-card:not(:only-child) .combat-art {
+  order: 0;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.5));
+}
+
+/* Players face right, towards the monster (art is drawn facing left) */
+.player-card .combat-art,
+.player-cards .player-card .combat-art {
+  scale: -1 1;
+}
+
+/* Pads under the feet */
+.player-card::after,
+.monster-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  bottom: -22px;
+  height: 52px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.player-card::after {
+  left: -10px;
+  width: 290px;
+  background:
+    radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--fighter-color) 60%, transparent), color-mix(in srgb, var(--fighter-color) 14%, transparent) 55%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, var(--fighter-color) 60% 64%, transparent 66%);
+}
+
+.player-card:not(:only-child)::after {
+  width: 235px;
+  height: 44px;
+  bottom: -18px;
+}
+
+.monster-card::after {
+  right: -14px;
+  width: 335px;
+  height: 60px;
+  bottom: -26px;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(237, 29, 36, 0.6), rgba(237, 29, 36, 0.14) 55%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(237, 29, 36, 0.95) 60% 64%, transparent 66%);
+}
+
+/* Info boxes */
+.fighter-info {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-self: center;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 2px solid color-mix(in srgb, var(--fighter-color) 80%, transparent);
+  border-radius: 14px;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--fighter-color) 24%, transparent), transparent 70%),
+    rgba(10, 7, 12, 0.86);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+}
+
+.monster-card .fighter-info {
+  border-color: rgba(237, 29, 36, 0.85);
+  background:
+    linear-gradient(160deg, rgba(237, 29, 36, 0.24), transparent 70%),
+    rgba(10, 7, 12, 0.86);
+}
+
+.fighter-info .combat-label strong {
+  font-size: 24px;
+}
+
+.player-card:not(:only-child) .fighter-info {
+  gap: 5px;
+  padding: 10px 12px;
+}
+
+.player-card:not(:only-child) .fighter-info .combat-label strong {
+  font-size: 21px;
+}
+
+.fighter-info .effect-line,
+.fighter-info .locked-move {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.combat-card.down > .fighter-info {
+  opacity: 0.56;
+}
+
+/* Attack / hit animations move only the fighter, not the info box. Keyframes use the
+   translate/rotate properties so they still lunge the right way on the mirrored players. */
+.player-card.is-live-attacking,
+.monster-card.is-live-attacking,
+.combat-card.is-live-hit {
+  animation: none;
+}
+
+.player-card.is-live-attacking .combat-art {
+  animation: arena-player-lunge 650ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.monster-card.is-live-attacking .combat-art {
+  animation: arena-monster-lunge 650ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.combat-card.is-live-hit .combat-art {
+  animation: arena-hit 560ms ease-out;
+}
+
+@keyframes arena-player-lunge {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  42% { translate: 46px 34px; rotate: 4deg; }
+  64% { translate: 34px 24px; rotate: -2deg; }
+}
+
+@keyframes arena-monster-lunge {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  42% { translate: -46px -34px; rotate: -4deg; }
+  64% { translate: -34px -24px; rotate: 2deg; }
+}
+
+@keyframes arena-hit {
+  0%, 100% { translate: 0 0; rotate: 0deg; filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.5)); }
+  18% { translate: -10px 0; rotate: -2deg; filter: drop-shadow(0 0 18px rgba(255, 60, 60, 0.95)) brightness(1.6); }
+  38% { translate: 10px 0; rotate: 2deg; }
+  58% { translate: -6px 0; rotate: -1deg; }
+  76% { translate: 4px 0; rotate: 0deg; }
+}
+
+/* ===== Compact battle log + instruction in the header =====
+   The "Now pick your move" line now sits under "Level x / y" in the top bar, and the
+   battle log is a slim box with a small label and the last 3 lines. */
+.battle-instruction {
+  margin: 4px 0 0;
+  color: #ffda70;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.screen-message {
+  gap: 4px;
+  min-height: 0;
+  padding: 10px 14px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(7, 9, 15, 0.72);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  text-align: left;
+  text-transform: none;
+}
+
+#lastMoves {
+  min-height: 0;
+  color: rgba(255, 218, 112, 0.85);
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+}
+
+.battle-log {
+  gap: 3px;
+}
+
+.battle-log p.log-row {
+  justify-content: flex-start;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.log-icon {
+  font-size: 14px;
+}
+
+/* Older lines fade so the newest one stands out */
+.battle-log p.log-row:not(:last-child) {
+  opacity: 0.7;
+}
+
+/* Use the space the old log box freed up: the fighters fill the middle of the screen
+   and the slim log sits at the bottom. */
+.battle-shell {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: stretch;
+}
+
+.battle-layout {
+  align-content: center;
+  gap: 70px;
+}
+
+.player-card {
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+
+.player-card:not(:only-child) {
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.monster-card {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.player-card::after {
+  width: 320px;
+}
+
+.player-card:not(:only-child)::after {
+  width: 260px;
+}
+
+.monster-card::after {
+  width: 350px;
+}
+
+/* Instruction: its own banner below the top bar */
+.battle-shell {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  row-gap: 14px;
+}
+
+.battle-instruction {
+  justify-self: center;
+  margin: 0;
+  padding: 9px 22px;
+  border: 2px solid rgba(245, 173, 15, 0.8);
+  border-radius: 999px;
+  background: rgba(10, 7, 12, 0.84);
+  box-shadow: 0 0 18px rgba(245, 173, 15, 0.3), 0 10px 22px rgba(0, 0, 0, 0.4);
+  color: #ffda70;
+  font-size: 19px;
+  font-weight: 1000;
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.9);
+}
+
+/* Pull the fighters in towards the centre of the screen: away from the side edges and
+   closer together top to bottom. */
+.battle-layout {
+  gap: 34px;
+  padding-inline: 18px;
+}
+
+.player-card {
+  grid-template-columns: 270px minmax(0, 1fr);
+}
+
+.player-card:not(:only-child) {
+  grid-template-columns: 215px minmax(0, 1fr);
+}
+
+.player-card:only-child {
+  margin-left: 22px;
+}
+
+.player-card:not(:only-child) {
+  margin-left: 12px;
+}
+
+.player-card:not(:only-child) + .player-card {
+  margin-left: 44px;
+}
+
+.monster-card {
+  grid-template-columns: minmax(0, 1fr) 290px;
+  margin-right: 14px;
+}
+
+.player-card::after {
+  width: 290px;
+}
+
+.player-card:not(:only-child)::after {
+  width: 235px;
+}
+
+.monster-card::after {
+  width: 320px;
+}
+
+/* Solo only: lift the fighters slightly */
+.battle-layout:has(.player-card:only-child) {
+  translate: 0 -50px;
+}
+
+/* ===== Countdown banner: battle-screen style on every screen =====
+   Dark pill, gold border, gold seconds badge. Each screen keeps its own position
+   (--countdown-bottom); during the battle it sits lower, between the monster's pad and
+   the battle log. */
+.reset-countdown-banner {
+  gap: 12px;
+  padding: 8px 10px 8px 18px;
+  border: 2px solid rgba(245, 173, 15, 0.8);
+  border-radius: 999px;
+  background: rgba(10, 7, 12, 0.88);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(245, 173, 15, 0.28), 0 12px 26px rgba(0, 0, 0, 0.45);
+}
+
+.reset-countdown-label {
+  color: #ffda70;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.9);
+}
+
+.reset-countdown-value {
+  min-width: 40px;
+  min-height: 36px;
+  background: var(--gold);
+  color: #151515;
+  font-size: 19px;
+}
+
+.screen-app:has(> #battleView:not([hidden])) .reset-countdown-banner {
+  --countdown-bottom: 150px;
+}
+
+/* ===== Lobby and game over in the battle-screen style =====
+   The cream panels (website code, "You won!", "Next game") become dark boxes with a gold
+   border, and the lobby player slots match the battle info boxes. The attract screen's
+   QR panel is left as it is. */
+.lobby-view .join-code-panel,
+.game-over-view .join-code-panel {
+  border: 2px solid rgba(245, 173, 15, 0.8);
+  border-radius: 16px;
+  background:
+    linear-gradient(160deg, rgba(245, 173, 15, 0.16), transparent 70%),
+    rgba(10, 7, 12, 0.88);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(245, 173, 15, 0.22), 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+
+.lobby-view .join-code-panel > span:first-child,
+.game-over-view .join-code-panel > span:first-child {
+  color: #ffda70;
+  letter-spacing: 0.06em;
+}
+
+.lobby-view .join-code-panel strong,
+.game-over-view .join-code-panel strong {
+  color: #fff;
+}
+
+.lobby-view .game-code,
+.game-over-view .game-code {
+  background: #fff;
+  color: #151515;
+}
+
+.game-over-view .voucher-countdown-text {
+  color: rgba(255, 248, 233, 0.82);
+}
+
+/* "You won!" box: brighter gold so the prize stands out */
+.game-over-view .voucher-qr-panel {
+  border-color: var(--gold);
+  box-shadow: 0 0 26px rgba(245, 173, 15, 0.45), 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+
+.game-over-view .voucher-qr-panel strong {
+  color: #ffda70;
+  font-size: 22px;
+}
+
+/* Lobby player slots: same dark rounded boxes as the battle info boxes */
+.lobby-slot {
+  border-radius: 14px;
+  background: rgba(10, 7, 12, 0.78);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.4);
+}
+
+.lobby-slot.filled {
+  border-color: rgba(245, 173, 15, 0.85);
+  background:
+    linear-gradient(160deg, rgba(245, 173, 15, 0.18), transparent 70%),
+    rgba(10, 7, 12, 0.86);
+}
+
+/* ===== Monster in its own colour =====
+   screen.js sets --fighter-color on the monster card from the monster's colour in Firebase
+   (same field the VS intro uses). Use it for the monster's info box, tag and pad instead of
+   the fixed red. */
+.monster-card .fighter-info {
+  border-color: color-mix(in srgb, var(--fighter-color) 85%, transparent);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--fighter-color) 26%, transparent), transparent 70%),
+    rgba(10, 7, 12, 0.86);
+}
+
+.monster-card .combat-label span {
+  background: color-mix(in srgb, var(--fighter-color) 30%, transparent);
+  color: color-mix(in srgb, var(--fighter-color) 45%, #fff);
+}
+
+.monster-card::after {
+  background:
+    radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--fighter-color) 60%, transparent), color-mix(in srgb, var(--fighter-color) 14%, transparent) 55%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, transparent 58%, var(--fighter-color) 60% 64%, transparent 66%);
+}
+
+/* ===== Move animations at the fighter, not the screen centre =====
+   screen.js (anchorEffectToFighter) sets --fx-x / --fx-y / --fx-size to the fighter's art box.
+   The video is placed over that box at the same size. Player videos are mirrored so they
+   face the monster. The fighter's own art hides while its video plays. */
+.move-animation.is-anchored {
+  top: var(--fx-y);
+  left: var(--fx-x);
+  width: var(--fx-size);
+  height: var(--fx-size);
+  max-width: none;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+}
+
+.move-animation.is-anchored.is-mirrored {
+  /* mirror inside the same transform, after the centring, so it doesn't jump sideways */
+  transform: translate(-50%, -50%) scaleX(-1);
+}
+
+.live-monster-portrait.is-anchored {
+  top: var(--fx-y);
+  left: var(--fx-x);
+  width: var(--fx-size);
+  height: var(--fx-size);
+}
+
+.combat-card.is-playing-move .combat-art {
+  opacity: 0;
+}
+
+/* ===== Co-op: both players the same size =====
+   Player 2 used to step forward (extra left margin), which made their info box narrower.
+   Both players now line up exactly: same art, same pad, same info box width. */
+.player-card:not(:only-child),
+.player-card:not(:only-child) + .player-card {
+  margin-left: 28px;
+}
+
+/* Move name while attacking: just below the "Now pick your move" banner, not mid-screen */
+.live-battle-move {
+  top: 200px;
 }

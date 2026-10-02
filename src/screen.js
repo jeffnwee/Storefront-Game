@@ -56,6 +56,7 @@ const elements = {
   gameOverView: $("gameOverView"),
   tutorialOverlay: $("tutorialOverlay"),
   tutorialWaitingText: $("tutorialWaitingText"),
+  tutorialObjectiveText: $("tutorialObjectiveText"),
   websiteQr: $("websiteQr"),
   websiteQrFallback: $("websiteQrFallback"),
   voucherQrPanel: $("voucherQrPanel"),
@@ -656,6 +657,7 @@ function setMoveAnimationPlaying(video, playing) {
   }
 
   video.classList.toggle("is-playing", playing);
+  fxAnchorCards.get(video)?.classList.toggle("is-playing-move", playing);
   if (video === elements.idleMoveAnimation) {
     elements.idlePlayerFighter.classList.toggle("is-playing-animation", playing);
   }
@@ -751,6 +753,34 @@ function pruneMoveAnimationReadiness(state) {
   });
 }
 
+// Move animations play where the fighter stands, not in the middle of the screen.
+// The effect element (move video or monster portrait) is placed exactly over the fighter's
+// art, same size, and that fighter's art is hidden while it plays so it isn't shown twice.
+// Players' videos are mirrored so they face the monster (the videos are drawn facing left).
+const fxAnchorCards = new WeakMap();
+
+function anchorEffectToFighter(effect, card, { mirror = false } = {}) {
+  const art = card?.querySelector(".combat-art");
+  const layer = effect?.offsetParent;
+  if (!effect || !art || !layer) {
+    effect?.classList.remove("is-anchored", "is-mirrored");
+    fxAnchorCards.delete(effect);
+    return;
+  }
+
+  // getBoundingClientRect is in screen pixels; the kiosk layout is scaled, so convert back.
+  const layerRect = layer.getBoundingClientRect();
+  const artRect = art.getBoundingClientRect();
+  const toLayout = layer.offsetWidth / Math.max(1, layerRect.width);
+  const size = Math.max(artRect.width, artRect.height) * toLayout;
+  effect.style.setProperty("--fx-x", `${(artRect.left - layerRect.left + artRect.width / 2) * toLayout}px`);
+  effect.style.setProperty("--fx-y", `${(artRect.top - layerRect.top + artRect.height / 2) * toLayout}px`);
+  effect.style.setProperty("--fx-size", `${size}px`);
+  effect.classList.add("is-anchored");
+  effect.classList.toggle("is-mirrored", mirror);
+  fxAnchorCards.set(effect, card);
+}
+
 function getPlayerBattleCard(playerId) {
   return Array.from(elements.playerCards.children)
     .find((card) => card.dataset.playerId === playerId) || null;
@@ -762,7 +792,9 @@ function showLiveMonsterPortrait(monster) {
   }
   elements.liveMonsterPortrait.src = monster.asset;
   elements.liveMonsterPortrait.alt = monster.name || "Monster";
+  anchorEffectToFighter(elements.liveMonsterPortrait, elements.monsterCard);
   animateIdleElement(elements.liveMonsterPortrait, "is-showing", 1080);
+  animateIdleElement(elements.monsterCard, "is-playing-move", 1080);
 }
 
 function showLiveBattleAction(moveName, impact = null) {
@@ -1267,6 +1299,7 @@ function animateResolvingMoves(state) {
       const playerCard = getPlayerBattleCard(player.id);
       showLiveBattleAction(move.name, randomItem(IDLE_IMPACT_WORDS));
       const video = elements.moveAnimations[index % elements.moveAnimations.length];
+      anchorEffectToFighter(video, playerCard, { mirror: true });
       if (
         moveAnimationReadinessByToken.get(moveToken) === true
         && video.src === moveAnimationUrl(move, true)
@@ -1332,7 +1365,7 @@ function suspendBattleBackgroundForMove() {
 
   battleBackgroundSuspendedForMove = true;
   elements.battleView.classList.add("is-move-playing");
-  elements.battleBackgroundVideo.pause();
+  elements.battleBackgroundVideo?.pause();
 }
 
 function resumeBattleBackgroundAfterMove() {
@@ -1359,7 +1392,7 @@ function resumeBattleBackgroundAfterMove() {
       return;
     }
 
-    elements.battleBackgroundVideo.play().catch(() => {
+    elements.battleBackgroundVideo?.play().catch(() => {
       // Foreground animation remains usable if background playback cannot resume.
     });
   }, BATTLE_BACKGROUND_RESUME_DELAY_MS);
@@ -1372,8 +1405,8 @@ function stopBattleBackground() {
   window.clearTimeout(battleBackgroundResumeTimer);
   battleBackgroundResumeTimer = null;
   elements.battleView.classList.remove("is-move-playing");
-  elements.battleBackgroundVideo.pause();
-  elements.battleBackgroundVideo.currentTime = 0;
+  elements.battleBackgroundVideo?.pause();
+  if (elements.battleBackgroundVideo) elements.battleBackgroundVideo.currentTime = 0;
 }
 
 function startBattleBackground() {
@@ -1382,7 +1415,7 @@ function startBattleBackground() {
   }
 
   battleBackgroundRunning = true;
-  elements.battleBackgroundVideo.play().catch(() => {
+  elements.battleBackgroundVideo?.play().catch(() => {
     // The game stays usable if a browser blocks muted autoplay.
   });
 }
@@ -1394,6 +1427,9 @@ function setView(viewName) {
   elements.lobbyView.hidden = viewName !== "lobby";
   elements.battleView.hidden = !battleIsActive;
   elements.gameOverView.hidden = viewName !== "game-over";
+  if (viewName !== "game-over") {
+    stopConfetti();
+  }
   elements.tutorialOverlay.hidden = !battleIsActive;
 
   if (battleIsActive && !document.hidden) {
@@ -1428,8 +1464,42 @@ function effectText(fighter) {
   return `Effects: ${parts.length ? parts.join(" / ") : "None"}`;
 }
 
+// HP bar colour: hue slides smoothly green -> yellow -> orange -> red as HP drops.
+// Each stop is [hp percent, hue]; values in between are interpolated.
+const HP_HUE_STOPS = [
+  [100, 140],
+  [75, 115],
+  [55, 52],
+  [35, 28],
+  [15, 3],
+  [0, 0]
+];
+
+function hpHue(pct) {
+  if (pct >= HP_HUE_STOPS[0][0]) {
+    return HP_HUE_STOPS[0][1];
+  }
+  for (let i = 1; i < HP_HUE_STOPS.length; i += 1) {
+    const [lowPct, lowHue] = HP_HUE_STOPS[i];
+    const [highPct, highHue] = HP_HUE_STOPS[i - 1];
+    if (pct >= lowPct) {
+      const t = (pct - lowPct) / (highPct - lowPct);
+      return lowHue + (highHue - lowHue) * t;
+    }
+  }
+  return 0;
+}
+
+function applyHpFill(fill, fighter) {
+  const pct = hpPercent(fighter);
+  const hue = hpHue(pct);
+  fill.style.width = `${pct}%`;
+  fill.style.setProperty("--hp-from", `hsl(${hue.toFixed(1)} 68% 42%)`);
+  fill.style.setProperty("--hp-to", `hsl(${(hue + 14).toFixed(1)} 78% 56%)`);
+}
+
 function renderHp(track, label, fighter) {
-  track.style.width = `${hpPercent(fighter)}%`;
+  applyHpFill(track, fighter);
   label.textContent = `${fighter.hp}/${fighter.maxHp}`;
 }
 
@@ -1439,6 +1509,10 @@ function renderTutorialOverlay(state) {
 
   if (!showing) {
     return;
+  }
+
+  if (elements.tutorialObjectiveText) {
+    elements.tutorialObjectiveText.textContent = `Defeat ${state.monster?.name || "the monster"}`;
   }
 
   const players = getOrderedPlayers(state);
@@ -1489,20 +1563,22 @@ function createPlayerCard(player) {
   card.className = "combat-card player-card";
   card.dataset.playerId = player.id;
   card.innerHTML = `
-    <div class="combat-label">
-      <span></span>
-      <strong></strong>
-    </div>
-    <div class="hp-row">
-      <span>HP</span>
-      <div class="hp-track">
-        <div class="hp-fill"></div>
-        <strong class="hp-value"></strong>
-      </div>
-    </div>
     <img class="combat-art" alt="" width="512" height="512" decoding="async" loading="eager" fetchpriority="high">
-    <div class="effect-line"></div>
-    <div class="locked-move"></div>
+    <div class="fighter-info">
+      <div class="combat-label">
+        <span></span>
+        <strong></strong>
+      </div>
+      <div class="hp-row">
+        <span>HP</span>
+        <div class="hp-track">
+          <div class="hp-fill"></div>
+          <strong class="hp-value"></strong>
+        </div>
+      </div>
+      <div class="effect-line"></div>
+      <div class="locked-move"></div>
+    </div>
   `;
   return card;
 }
@@ -1518,7 +1594,7 @@ function updatePlayerCard(card, player, pendingMoves) {
   card.style.setProperty("--fighter-accent", player.accent || "#f5ad0f");
   card.querySelector(".combat-label span").textContent = `Player ${Number(player.slot || 0) + 1}`;
   card.querySelector(".combat-label strong").textContent = player.name;
-  card.querySelector(".hp-fill").style.width = `${hpPercent(player)}%`;
+  applyHpFill(card.querySelector(".hp-fill"), player);
   card.querySelector(".hp-value").textContent = `${player.hp}/${player.maxHp}`;
   card.querySelector(".effect-line").textContent = effectText(player);
   card.querySelector(".locked-move").textContent = player.hp <= 0
@@ -1647,7 +1723,7 @@ function registerFighterColors(players, monster) {
 
 function renderLog(log, players, monster) {
   registerFighterColors(players, monster);
-  const entries = Array.isArray(log) ? log.slice(-5) : [];
+  const entries = Array.isArray(log) ? log.slice(-3) : [];
   const context = { colors: knownFighterColors, monsterName: monster?.name };
   elements.battleLog.innerHTML = "";
 
@@ -1733,16 +1809,235 @@ function renderBattle(state) {
   lastBattleSnapshot = captureBattleSnapshot(state);
 }
 
+// ---- Win screen confetti ---------------------------------------------------
+// Pure-CSS falling confetti, built once when the players win and removed when the win screen goes away.
+const CONFETTI_COUNT = 70;
+const CONFETTI_COLORS = ["#ed1d24", "#f5ad0f", "#ffffff", "#fff7e8", "#ff6b35"];
+let confettiActive = false;
+
+function startConfetti() {
+  const layer = document.getElementById("confettiLayer");
+  if (!layer || confettiActive) return;
+  confettiActive = true;
+  const pieces = document.createDocumentFragment();
+  for (let i = 0; i < CONFETTI_COUNT; i += 1) {
+    const piece = document.createElement("i");
+    piece.className = i % 5 === 0 ? "confetti-piece is-round" : "confetti-piece";
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    piece.style.setProperty("--w", `${8 + Math.random() * 8}px`);
+    piece.style.setProperty("--drift", `${Math.round(Math.random() * 160 - 80)}px`);
+    piece.style.setProperty("--spin", `${Math.round(360 + Math.random() * 720)}deg`);
+    piece.style.animationDuration = `${3.2 + Math.random() * 3}s`;
+    piece.style.animationDelay = `${-Math.random() * 6}s`;
+    pieces.appendChild(piece);
+  }
+  layer.appendChild(pieces);
+}
+
+function stopConfetti() {
+  if (!confettiActive) return;
+  confettiActive = false;
+  const layer = document.getElementById("confettiLayer");
+  if (layer) layer.textContent = "";
+}
+
 function renderGameOver(state) {
   setView("game-over");
   const playersWon = state.winner === "players";
   elements.gameOverEyebrow.textContent = playersWon ? "All levels cleared" : "Battle lost";
-  elements.winnerText.textContent = playersWon ? "Players win!" : "Monster wins";
+  elements.winnerText.textContent = playersWon ? "\u{1F389} Players win! \u{1F389}" : "Monster wins";
+  elements.winnerText.classList.toggle("is-win", playersWon);
   elements.gameOverMessage.textContent = playersWon
     ? `The curry party cleared all ${getLevelCount(state.mode || "solo")} levels. A fresh code will appear for the next battle.`
     : "The monster held the screen. A fresh code will appear for the next battle. Let the next player take on the challenge.";
   if (elements.voucherQrPanel) {
     elements.voucherQrPanel.hidden = !playersWon;
+  }
+  if (playersWon) {
+    startConfetti();
+  } else {
+    stopConfetti();
+  }
+}
+
+// ---- Battle intro cutscene (VS opening) -----------------------------------
+// Plays on the kiosk when a level becomes playable (after the tutorial on level 1, and for each new
+// monster after that). The move timer and move resolving wait until it has finished.
+const BATTLE_INTRO_MS = 5000;
+const BATTLE_INTRO_ART_WAIT_MS = 800;
+let battleIntroKey = null;
+let battleIntroActive = false;
+let battleIntroTimer = null;
+let latestState = null;
+
+function battleIntroKeyFor(state) {
+  if (state?.status !== "battle" || state.showTutorial) return null;
+  if (Number(state.turn || 1) !== 1) return null;
+  if (!state.monster || !Object.keys(state.players || {}).length) return null;
+  const key = `${state.gameId || gameId}:${Number(state.levelIndex || 0)}`;
+  return key === battleIntroKey ? null : key;
+}
+
+function maybePlayBattleIntro(state) {
+  if (battleIntroActive && state?.status !== "battle") {
+    endBattleIntro();
+    return;
+  }
+
+  const key = battleIntroKeyFor(state);
+  if (key) {
+    playBattleIntro(state, key).catch((error) => {
+      console.error("Battle intro failed", error);
+      endBattleIntro();
+    });
+  }
+}
+
+// Splits a name into per-letter spans (grouped by word so wrapping only happens between words).
+// CSS slams the letters in one by one (--i = letter index, --r = starting tilt) and then runs a wave.
+function setVsName(element, text) {
+  setVsNameParts(element, [{ text }]);
+}
+
+// Same as setVsName, but each part can have its own outline colour (`accent`).
+// Used for co-op: each player's name in their own colour, "&" in black.
+// Letter numbering (--i) runs across all parts so the slam and wave stay one smooth sweep.
+function setVsNameParts(element, parts) {
+  element.replaceChildren();
+  element.setAttribute("aria-label", parts.map((part) => part.text).join(" "));
+
+  let index = 0;
+  parts.forEach((part, partIndex) => {
+    const partElement = document.createElement("span");
+    partElement.className = "vs-name-part";
+    if (part.accent) {
+      partElement.style.setProperty("--part-accent", part.accent);
+    }
+
+    const words = String(part.text || "").split(/\s+/).filter(Boolean);
+    words.forEach((word, wordIndex) => {
+      const wordElement = document.createElement("span");
+      wordElement.className = "vs-word";
+      wordElement.setAttribute("aria-hidden", "true");
+
+      [...word].forEach((character) => {
+        const letter = document.createElement("span");
+        letter.className = "vs-letter";
+        letter.textContent = character;
+        letter.style.setProperty("--i", String(index));
+        letter.style.setProperty("--r", `${(index % 2 ? 1 : -1) * (6 + ((index * 7) % 9))}deg`);
+        wordElement.appendChild(letter);
+        index += 1;
+      });
+
+      partElement.appendChild(wordElement);
+      if (wordIndex < words.length - 1) {
+        partElement.appendChild(document.createTextNode(" "));
+      }
+    });
+
+    element.appendChild(partElement);
+    if (partIndex < parts.length - 1) {
+      element.appendChild(document.createTextNode(" "));
+    }
+  });
+}
+
+async function playBattleIntro(state, key) {
+  const intro = $("vsIntro");
+  if (!intro) return;
+
+  battleIntroKey = key;
+  battleIntroActive = true;
+
+  const players = getOrderedPlayers(state);
+  const monster = state.monster;
+  const team = $("vsTeam");
+  const monsterArt = $("vsMonsterArt");
+  const images = [];
+
+  team.replaceChildren();
+  team.dataset.size = String(Math.min(players.length, 4));
+  players.forEach((player) => {
+    const url = getPlayerArtUrl(player);
+    if (!url) return;
+    const image = new Image();
+    image.alt = "";
+    image.decoding = "async";
+    image.src = url;
+    team.appendChild(image);
+    images.push(image);
+  });
+
+  monsterArt.src = monster.asset || "";
+  images.push(monsterArt);
+
+  $("vsLevel").textContent = `Level ${Number(state.levelIndex || 0) + 1}`;
+  $("vsPlayerKicker").textContent = players.length > 1 ? "Team" : "Player";
+  const playerAccent = (player) => player?.color || player?.accent || "#f5ad0f";
+  if (players.length > 1) {
+    // Co-op: each name outlined in that player's colour, "&" in black.
+    const parts = [];
+    players.forEach((player, playerIndex) => {
+      if (playerIndex > 0) parts.push({ text: "&", accent: "#111" });
+      parts.push({ text: player.name, accent: playerAccent(player) });
+    });
+    setVsNameParts($("vsPlayerName"), parts);
+  } else {
+    setVsName($("vsPlayerName"), players[0]?.name || "Player");
+  }
+  setVsName($("vsMonsterName"), monster.name);
+  $("vsMonsterHp").textContent = `HP ${monster.maxHp}`;
+  // Colours for the card edges (team = first player's colour). Uses each fighter's main `color`
+  // from Firebase, because most `accent` values are a similar gold. To use `accent` instead,
+  // swap the two fields below.
+  intro.classList.toggle("is-team", players.length > 1);
+  intro.style.setProperty("--vs-player-accent", playerAccent(players[0]));
+  // Second half of the split lines in co-op (same colour as the first in solo, so no split shows).
+  intro.style.setProperty("--vs-player-accent-2", playerAccent(players[1] || players[0]));
+  intro.style.setProperty("--vs-monster-accent", monster.color || monster.accent || "#ed1d24");
+  intro.querySelector(".vs-banner-player strong").style.fontSize = players.length > 1 ? "40px" : "";
+
+  // Wait briefly for the art so it doesn't pop in mid-animation.
+  await Promise.race([
+    Promise.all(images.map((image) => (image.decode ? image.decode().catch(() => { }) : Promise.resolve()))),
+    new Promise((resolve) => window.setTimeout(resolve, BATTLE_INTRO_ART_WAIT_MS))
+  ]);
+
+  if (!battleIntroActive || battleIntroKey !== key) return;
+
+  intro.hidden = false;
+  void intro.offsetWidth; // restart the CSS animations
+  intro.classList.add("is-playing");
+  window.clearTimeout(battleIntroTimer);
+  battleIntroTimer = window.setTimeout(endBattleIntro, BATTLE_INTRO_MS);
+}
+
+function endBattleIntro() {
+  window.clearTimeout(battleIntroTimer);
+  battleIntroTimer = null;
+
+  const intro = $("vsIntro");
+  if (intro) {
+    intro.classList.remove("is-playing");
+    intro.hidden = true;
+  }
+
+  if (!battleIntroActive) return;
+  battleIntroActive = false;
+
+  // Start the things we held back while the cutscene played.
+  if (latestState) {
+    try {
+      scheduleMoveTimeout(latestState);
+    } catch (error) {
+      console.error("scheduleMoveTimeout() failed", error);
+    }
+    resolvePendingMoves(latestState).catch((error) => {
+      console.error("Could not resolve moves", error);
+      resolvingToken = null;
+    });
   }
 }
 
@@ -1856,6 +2151,10 @@ async function resolveTutorialAcknowledgement(state) {
 }
 
 async function resolvePendingMoves(state) {
+  if (battleIntroActive) {
+    return; // endBattleIntro() calls this again once the cutscene is over
+  }
+
   if (state.status !== "battle" || !allAlivePlayersHaveMoves(state)) {
     return;
   }
@@ -2088,6 +2387,10 @@ function clearMoveTimeout() {
 }
 
 function scheduleMoveTimeout(state) {
+  if (battleIntroActive && state?.status === "battle") {
+    return; // the 30s move timer starts when the cutscene ends
+  }
+
   const waitingForMoves = state?.status === "battle"
     && !state.showTutorial
     && !allAlivePlayersHaveMoves(state);
@@ -2766,6 +3069,7 @@ async function activateSession(nextGameId, createNew) {
     if (gameId !== activeGameId) return;
 
     const state = nextSnapshot.val();
+    latestState = state;
 
     if (state === null && !rotatingSession) {
       rotateToNewSession().catch((error) => console.error("Could not recover deleted session", error));
@@ -2776,6 +3080,12 @@ async function activateSession(nextGameId, createNew) {
       render(state);
     } catch (error) {
       console.error("render() failed", error);
+    }
+
+    try {
+      maybePlayBattleIntro(state);
+    } catch (error) {
+      console.error("maybePlayBattleIntro() failed", error);
     }
 
     try {
