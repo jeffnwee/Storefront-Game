@@ -1490,12 +1490,73 @@ function hpHue(pct) {
   return 0;
 }
 
+function spawnHpDelta(fill, delta) {
+  const row = fill.closest(".hp-row");
+  if (!row) {
+    return;
+  }
+  const el = document.createElement("span");
+  el.className = `hp-delta ${delta < 0 ? "hp-delta-loss" : "hp-delta-gain"}`;
+  el.textContent = delta < 0 ? String(delta) : `+${delta}`;
+  row.appendChild(el);
+  el.addEventListener("animationend", () => el.remove(), { once: true });
+  setTimeout(() => el.remove(), 2200);
+}
+
 function applyHpFill(fill, fighter) {
   const pct = hpPercent(fighter);
   const hue = hpHue(pct);
+  const track = fill.parentElement;
+  let ghost = track?.querySelector(".hp-ghost");
+  if (track && !ghost) {
+    ghost = document.createElement("div");
+    ghost.className = "hp-ghost";
+    track.insertBefore(ghost, fill);
+  }
+
+  // Previous values live on the element so each bar tracks its own history.
+  const hasPrev = fill.dataset.prevHp !== undefined && Number(fill.dataset.prevMax) === fighter.maxHp;
+  const prevHp = Number(fill.dataset.prevHp);
+  const prevPct = Number(fill.dataset.prevPct);
+  const prevHue = Number(fill.dataset.prevHue);
+  const delta = hasPrev ? fighter.hp - prevHp : 0;
+
   fill.style.width = `${pct}%`;
   fill.style.setProperty("--hp-from", `hsl(${hue.toFixed(1)} 68% 42%)`);
   fill.style.setProperty("--hp-to", `hsl(${(hue + 14).toFixed(1)} 78% 56%)`);
+
+  if (ghost) {
+    if (!hasPrev || delta > 0) {
+      // First draw, new fighter, or heal: no trail.
+      clearTimeout(ghost._drainTimer);
+      ghost.style.transition = "none";
+      ghost.style.width = `${pct}%`;
+      ghost.style.background = `hsl(${hue.toFixed(1)} 85% 80%)`;
+    } else if (delta < 0) {
+      // Hit: keep a paler copy of the old bar colour where the HP was, then drain it.
+      clearTimeout(ghost._drainTimer);
+      const shown = parseFloat(ghost.style.width) || prevPct;
+      ghost.style.transition = "none";
+      ghost.style.width = `${Math.max(shown, prevPct)}%`;
+      ghost.style.background = `hsl(${prevHue.toFixed(1)} 85% 80%)`;
+      ghost._drainTimer = setTimeout(() => {
+        ghost.style.transition = "width 700ms ease-out";
+        ghost.style.width = `${pct}%`;
+      }, 450);
+    }
+  }
+
+  if (track) {
+    track.classList.toggle("hp-low", fighter.hp > 0 && pct <= 25);
+  }
+  if (delta !== 0) {
+    spawnHpDelta(fill, delta);
+  }
+
+  fill.dataset.prevHp = String(fighter.hp);
+  fill.dataset.prevMax = String(fighter.maxHp);
+  fill.dataset.prevPct = String(pct);
+  fill.dataset.prevHue = String(hue);
 }
 
 function renderHp(track, label, fighter) {

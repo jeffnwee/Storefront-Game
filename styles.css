@@ -3003,3 +3003,275 @@ a
   background: #fff;
   color: #151515;
 }
+
+/* ---- Big-screen HP bars (spectator view) ------------------------------------- */
+.hp-row {
+  position: relative;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+}
+
+.hp-track {
+  height: 42px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.62);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.monster-card .hp-track {
+  height: 52px;
+}
+
+.hp-fill {
+  position: relative;
+  z-index: 1;
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.28), inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+}
+
+.hp-ghost {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 0;
+  border-radius: inherit;
+  background: hsl(140 85% 80%);
+}
+
+.hp-value {
+  z-index: 2;
+  font-size: 26px;
+  -webkit-text-stroke: 5px rgba(0, 0, 0, 0.9);
+}
+
+.monster-card .hp-value {
+  font-size: 32px;
+}
+
+/* Low HP (25% or less): pulsing red glow */
+.hp-track.hp-low {
+  border-color: #ff5a5a;
+  animation: hpLowPulse 900ms ease-in-out infinite;
+}
+
+.hp-track.hp-low .hp-value {
+  color: #ffd6d6;
+}
+
+@keyframes hpLowPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 0 0 rgba(255, 60, 60, 0); }
+  50% { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 22px 6px rgba(255, 60, 60, 0.85); }
+}
+
+/* Floating damage / heal numbers */
+.hp-delta {
+  position: absolute;
+  right: 6px;
+  bottom: 100%;
+  z-index: 5;
+  pointer-events: none;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+  -webkit-text-stroke: 6px rgba(0, 0, 0, 0.9);
+  paint-order: stroke fill;
+  text-shadow: none;
+  animation: hpDeltaRise 1500ms ease-out forwards;
+}
+
+.hp-delta-loss { color: #ff4d4d; }
+.hp-delta-gain { color: #5fe07a; }
+
+@keyframes hpDeltaRise {
+  0% { opacity: 0; transform: translateY(8px) scale(0.6); }
+  15% { opacity: 1; transform: translateY(-4px) scale(1.25); }
+  35% { transform: translateY(-10px) scale(1); }
+  100% { opacity: 0; transform: translateY(-44px) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp-track.hp-low { animation: none; box-shadow: 0 0 14px 3px rgba(255, 60, 60, 0.8); }
+  .hp-delta { animation-duration: 1ms; }
+}
+
+/* ---- HP bar fit fix: the info boxes beside the fighters are narrow, so stack the
+   "HP" label above a full-width bar and size the numbers to fit. ------------------- */
+.hp-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  font-size: 12px;
+}
+
+.hp-track,
+.monster-card .hp-track {
+  height: 34px;
+}
+
+.hp-value,
+.monster-card .hp-value {
+  font-size: 18px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  -webkit-text-stroke: 4px rgba(0, 0, 0, 0.9);
+}
+
+.hp-delta {
+  font-size: 28px;
+  -webkit-text-stroke: 5px rgba(0, 0, 0, 0.9);
+}
+
+/* ---- Wider info boxes: use more of the screen width (about +35px each) ---------- */
+.battle-layout {
+  padding-inline: 8px;
+}
+
+.player-card:only-child {
+  margin-left: 8px;
+}
+
+.player-card:not(:only-child) {
+  margin-left: 4px;
+}
+
+.player-card:not(:only-child) + .player-card {
+  margin-left: 30px;
+}
+
+.monster-card {
+  margin-right: 4px;
+}
+
+.hp-track,
+.monster-card .hp-track {
+  height: 38px;
+}
+
+.hp-value,
+.monster-card .hp-value {
+  font-size: 22px;
+}
+
+/* ---- Shift fighters outward (players left, monster right) to make the info boxes wider */
+.player-card:only-child {
+  margin-left: -16px;
+  margin-right: -14px;
+}
+
+.player-card:not(:only-child) {
+  margin-left: -18px;
+  margin-right: -14px;
+}
+
+.player-card:not(:only-child) + .player-card {
+  margin-left: 8px;
+}
+
+.monster-card {
+  margin-left: -16px;
+  margin-right: -22px;
+}
+
+/* ---- Uniform info boxes (players + monster) and matching fighter sizes ------------
+   Every info box is the same fixed width, sized for the longest character names.
+   Both players use the same art column and the same pad (circle) size. -------------- */
+.combat-card .fighter-info {
+  box-sizing: border-box;
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+}
+
+.fighter-info .combat-label strong,
+.player-card:not(:only-child) .fighter-info .combat-label strong {
+  font-size: 21px;
+  white-space: nowrap;
+}
+
+.player-card:only-child {
+  grid-template-columns: 252px 280px;
+  margin-left: 12px;
+  margin-right: 0;
+}
+
+.player-card:not(:only-child) {
+  grid-template-columns: 215px 280px;
+  margin-left: 12px;
+  margin-right: 0;
+}
+
+.player-card:not(:only-child) + .player-card {
+  margin-left: 38px;
+}
+
+.monster-card {
+  grid-template-columns: 280px 262px;
+  justify-content: start;
+  margin-left: 12px;
+  margin-right: 0;
+}
+
+.player-card:only-child::after {
+  left: -10px;
+  width: 285px;
+}
+
+.player-card:not(:only-child)::after {
+  left: -8px;
+  width: 245px;
+  height: 44px;
+}
+
+.monster-card::after {
+  right: -10px;
+  width: 295px;
+}
+
+/* HP numbers: same font as the names and labels, no heavy outline */
+.hp-value,
+.monster-card .hp-value {
+  font-family: inherit;
+  font-weight: 1000;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  -webkit-text-stroke: 0;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.95),
+    0 1px 2px rgba(0, 0, 0, 0.95),
+    0 2px 5px rgba(0, 0, 0, 0.8);
+}
+
+.hp-delta {
+  font-family: inherit;
+  font-weight: 1000;
+  -webkit-text-stroke: 0;
+  text-shadow:
+    0 0 4px rgba(0, 0, 0, 1),
+    0 2px 3px rgba(0, 0, 0, 0.95),
+    0 3px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Pull the whole lineup left so the wider boxes stay on screen */
+.player-card:only-child,
+.player-card:not(:only-child) {
+  margin-left: -28px;
+}
+
+.player-card:not(:only-child) + .player-card {
+  margin-left: 0;
+}
+
+.monster-card {
+  margin-left: -23px;
+}
+
+.monster-card::after {
+  right: -4px;
+}
+
+/* Player 1 and Player 2 line up vertically (same left edge) */
+.player-card:not(:only-child) + .player-card {
+  margin-left: -28px;
+}
