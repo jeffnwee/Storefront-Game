@@ -3275,3 +3275,109 @@ a
 .player-card:not(:only-child) + .player-card {
   margin-left: -28px;
 }
+
+
+/* ===== Battle lineup: centred, with even side margins; pads sit under the art =====
+   Replaces the stacked negative-margin tweaks above. Every card shrink-wraps its two columns
+   (art + info box) and is centred, so the left and right gaps match (about 24px each) and
+   nothing hugs the screen edge. Each pad is placed from its own art column, so the fighter
+   always stands on its circle.
+   --info-w = info box width, --art-w = fighter art column, --pad-w = pad (circle) width. */
+.battle-layout {
+  padding-inline: 0;
+  margin-inline: -6px; /* the shell has 30px side padding; this gives the cards a 529px wide lane */
+}
+
+.battle-layout .combat-card {
+  --info-w: 272px;
+  --pad-w: 270px;
+  width: max-content;
+  justify-self: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.battle-layout .combat-card .fighter-info {
+  width: var(--info-w);
+  min-width: var(--info-w);
+  max-width: var(--info-w);
+}
+
+/* Solo player: art left, info right */
+.battle-layout .player-card:only-child {
+  --art-w: 246px;
+  grid-template-columns: var(--art-w) var(--info-w);
+}
+
+/* Co-op players: slightly smaller art, both lined up on the same left edge */
+.battle-layout .player-card:not(:only-child),
+.battle-layout .player-card:not(:only-child) + .player-card {
+  --art-w: 215px;
+  --pad-w: 240px;
+  grid-template-columns: var(--art-w) var(--info-w);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Monster: info left, art right */
+.battle-layout .monster-card {
+  --art-w: 246px;
+  grid-template-columns: var(--info-w) var(--art-w);
+}
+
+/* Pads: centred under the art column of their own card */
+.battle-layout .player-card::after {
+  right: auto;
+  left: calc((var(--art-w) - var(--pad-w)) / 2);
+  width: var(--pad-w);
+}
+
+.battle-layout .monster-card::after {
+  right: auto;
+  left: calc(var(--info-w) + 10px + (var(--art-w) - var(--pad-w)) / 2);
+  width: var(--pad-w);
+}
+
+/* ===== Same layout in every browser window =====
+   An older rule (@media landscape, min-width 900px) narrowed every screen's content to 520px
+   when the page was opened in a wide window, e.g. a desktop browser. The storefront screen
+   is always the fixed 577 x 1439 canvas scaled to fit, so that rule only made the preview
+   differ from the real screen, and pushed the battle cards past the right edge.
+   Keep the full width everywhere. */
+@media (orientation: landscape) and (min-width: 900px) {
+  .screen-page .portrait-shell {
+    width: 100%;
+  }
+}
+
+/* Battle lineup: keep the cards inside the same 30px side margins as the top bar,
+   so nothing touches the screen edge. Slightly narrower info box / art to fit. */
+.battle-layout {
+  margin-inline: 0;
+}
+
+.battle-layout .combat-card {
+  --info-w: 262px;
+}
+
+.battle-layout .player-card:only-child,
+.battle-layout .monster-card {
+  --art-w: 244px;
+}
+
+.battle-layout .player-card:only-child {
+  --pad-w: 266px;
+}
+
+.battle-layout .monster-card {
+  --pad-w: 266px;
+}
+
+/* ===== Win screen confetti behind the text =====
+   The confetti used to fall in front of everything (z-index 4, above the text at 3).
+   It now falls behind the title, message and panels, and is toned down so it doesn't
+   compete with the text. */
+.confetti-layer {
+  z-index: 1;
+  opacity: 0.55;
+}
