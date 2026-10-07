@@ -3442,3 +3442,57 @@ a
 .battle-layout .player-cards {
   gap: 48px;
 }
+
+/* ===== Fighters stand IN their circle =====
+   Each pad is centred on where that fighter's feet actually are in its picture
+   (--fx = feet centre across, --fy = bottom of the feet, as a fraction of the picture;
+   --ar = picture width / height for monsters that aren't square), taking the zoom, the
+   sideways nudge and the players' mirroring into account. The feet sit on the middle line
+   of the ellipse, so it reads as a circle on the ground with the fighter standing in it.
+   Values were measured from the pictures in assets/characters/idle and assets/enemies;
+   a new fighter without a line below uses the average (--fx 0.5, --fy 0.92). */
+.battle-layout .combat-card {
+  --fx: 0.5;
+  --fy: 0.92;
+  --ar: 1;
+}
+
+.battle-layout .player-card { --pad-h: 56px; }
+.battle-layout .player-card:not(:only-child),
+.battle-layout .player-card:not(:only-child) + .player-card { --pad-h: 48px; }
+.battle-layout .monster-card { --pad-h: 62px; }
+
+.battle-layout .player-card::after,
+.battle-layout .player-card:not(:only-child)::after,
+.battle-layout .monster-card::after {
+  right: auto;
+  width: calc(var(--pad-w) * var(--zoom, 1));
+  height: calc(var(--pad-h) * var(--zoom, 1));
+  /* feet sit a little in front of the ellipse's middle line (--feet-depth: 0.5 = middle,
+     higher = further forward), which reads as standing on the ground inside the circle */
+  bottom: calc((1 - var(--fy)) * var(--art-w) * var(--zoom, 1) - var(--pad-h) * var(--zoom, 1) * (1 - var(--feet-depth, 0.62)));
+}
+
+/* Players are mirrored, so their feet centre flips: 0.5 - fx instead of fx - 0.5 */
+.battle-layout .player-card::after,
+.battle-layout .player-card:not(:only-child)::after {
+  left: calc(var(--art-w) / 2 + (0.5 - var(--fx)) * var(--art-w) * var(--ar) * var(--zoom, 1) + var(--shift, 0px) - var(--pad-w) * var(--zoom, 1) / 2);
+}
+
+.battle-layout .monster-card::after {
+  left: calc(var(--info-w) + 10px + var(--art-w) / 2 + (var(--fx) - 0.5) * var(--art-w) * var(--ar) * var(--zoom, 1) + var(--shift, 0px) - var(--pad-w) * var(--zoom, 1) / 2);
+}
+
+.battle-layout .player-card[data-character-id="cheezu-mellow"] { --fx: 0.527; --fy: 0.939; }
+.battle-layout .player-card[data-character-id="giga-nomu"] { --fx: 0.504; --fy: 0.904; }
+.battle-layout .player-card[data-character-id="hot-sizz"] { --fx: 0.486; --fy: 0.896; }
+.battle-layout .player-card[data-character-id="katsu-chan"] { --fx: 0.501; --fy: 0.898; }
+.battle-layout .player-card[data-character-id="monstora-sharemi"] { --fx: 0.589; --fy: 0.932; }
+.battle-layout .player-card[data-character-id="ramy-noodleton"] { --fx: 0.465; --fy: 0.920; }
+.battle-layout .player-card[data-character-id="tamago-puffy"] { --fx: 0.468; --fy: 0.918; }
+.battle-layout .player-card[data-character-id="teppa-spark"] { --fx: 0.490; --fy: 0.945; }
+.battle-layout .monster-card[data-monster="blaze-fiend"] { --fx: 0.487; --fy: 0.945; --ar: 0.727; }
+.battle-layout .monster-card[data-monster="curry-goblin"] { --fx: 0.509; --fy: 0.953; --ar: 0.863; }
+.battle-layout .monster-card[data-monster="root-curry-brute"] { --fx: 0.498; --fy: 0.958; --ar: 0.836; }
+.battle-layout .monster-card[data-monster="rotten-goblin"] { --fx: 0.506; --fy: 0.917; --ar: 1.000; }
+.battle-layout .monster-card[data-monster="sporeback-brute"] { --fx: 0.523; --fy: 0.961; --ar: 0.792; }
