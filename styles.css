@@ -3381,3 +3381,64 @@ a
   z-index: 1;
   opacity: 0.55;
 }
+/* ===== Bigger fighters, same-size info boxes =====
+   The fighters are scaled up from their feet (--zoom) so they still stand on their pads,
+   and nudged outward (--shift) so the extra size goes mostly towards the screen edge rather
+   than into the info box. The info boxes keep their exact size and sit in front of the art,
+   so any overlap tucks behind the box edge. Pads grow with the fighter.
+   --zoom: 1 = old size. --shift: sideways nudge in px (negative = left). */
+.battle-layout .player-card:only-child {
+  --zoom: 1.3;
+  --shift: -11px;
+}
+
+.battle-layout .player-card:not(:only-child),
+.battle-layout .player-card:not(:only-child) + .player-card {
+  --zoom: 1.2;
+  --shift: -6px;
+}
+
+.battle-layout .monster-card {
+  --zoom: 1.26;
+  --shift: 8px;
+}
+
+.battle-layout .combat-card .combat-art {
+  position: relative;
+  z-index: 1;
+  left: var(--shift, 0px);
+  transform-origin: 50% 100%;
+}
+
+.battle-layout .player-card .combat-art {
+  scale: calc(-1 * var(--zoom, 1)) var(--zoom, 1); /* mirrored to face the monster */
+}
+
+.battle-layout .monster-card .combat-art {
+  scale: var(--zoom, 1);
+}
+
+.battle-layout .combat-card .fighter-info {
+  position: relative;
+  z-index: 2;
+}
+
+/* Pads: wider with the fighter and centred under the nudged art */
+.battle-layout .player-card::after {
+  width: calc(var(--pad-w) * var(--zoom, 1));
+  left: calc((var(--art-w) - var(--pad-w) * var(--zoom, 1)) / 2 + var(--shift, 0px));
+}
+
+.battle-layout .monster-card::after {
+  width: calc(var(--pad-w) * var(--zoom, 1));
+  left: calc(var(--info-w) + 10px + (var(--art-w) - var(--pad-w) * var(--zoom, 1)) / 2 + var(--shift, 0px));
+}
+
+/* More room between rows so the taller fighters don't reach the row above */
+.battle-layout {
+  gap: 70px;
+}
+
+.battle-layout .player-cards {
+  gap: 48px;
+}
