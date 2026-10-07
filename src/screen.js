@@ -1649,6 +1649,7 @@ function updatePlayerCard(card, player, pendingMoves) {
   const sourceUrl = getPlayerArtUrl(player);
   const art = card.querySelector(".combat-art");
 
+  card.dataset.characterId = player.characterId || ""; // lets the CSS place the pad under this character's feet
   card.classList.toggle("down", player.hp <= 0);
   card.classList.toggle("is-defeated", player.hp <= 0);
   card.style.setProperty("--fighter-color", player.color || "#ed1d24");
@@ -1837,6 +1838,8 @@ function renderBattle(state) {
     elements.monsterName.textContent = monster.name;
     renderHp(elements.monsterHpBar, elements.monsterHpText, monster);
     elements.monsterArt.src = monster.asset;
+    // e.g. "assets/enemies/curry-goblin.webp" -> "curry-goblin", so the CSS can place the pad under its feet
+    elements.monsterCard.dataset.monster = String(monster.asset || "").split("?")[0].split("/").pop().replace(/\.[a-z0-9]+$/i, "");
     elements.monsterArt.alt = monster.name;
     elements.monsterEffects.textContent = effectText(monster);
   }
