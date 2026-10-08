@@ -3443,6 +3443,14 @@ a
   gap: 48px;
 }
 
+/* ===== Fighters stand IN their circle =====
+   Each pad is centred on where that fighter's feet actually are in its picture
+   (--fx = feet centre across, --fy = bottom of the feet, as a fraction of the picture;
+   --ar = picture width / height for monsters that aren't square), taking the zoom, the
+   sideways nudge and the players' mirroring into account. The feet sit on the middle line
+   of the ellipse, so it reads as a circle on the ground with the fighter standing in it.
+   Values were measured from the pictures in assets/characters/idle and assets/enemies;
+   a new fighter without a line below uses the average (--fx 0.5, --fy 0.92). */
 .battle-layout .combat-card {
   --fx: 0.5;
   --fy: 0.92;
@@ -3489,11 +3497,15 @@ a
 .battle-layout .monster-card[data-monster="rotten-goblin"] { --fx: 0.506; --fy: 0.917; --ar: 1.000; }
 .battle-layout .monster-card[data-monster="sporeback-brute"] { --fx: 0.523; --fy: 0.961; --ar: 0.792; }
 
+/* ===== Layout B: classic RPG =====
+   Monster further back at the top, the party close to the audience at the bottom.
+   Same order as Pokemon / Final Fantasy: the closer fighters are drawn bigger.
+   To go back to the diagonal layout, delete this block. */
 .battle-layout {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 60px;
+  gap: 120px; /* space between the monster row and the player row */
 }
 
 .battle-layout:has(.player-card:only-child) {
